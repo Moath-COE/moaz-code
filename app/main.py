@@ -8,21 +8,6 @@ from openai import OpenAI
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
 
-def detect_tool_calls(tool_calls):
-    for call in tool_calls:
-        if (call.function.name == "read"):
-            arguments = json.loads(call.function.arguments)
-            f = read_tool(arguments["file_path"])
-            print(f.read())
-            f.close()
-
-def read_tool(file_path):
-    try:
-        with open(file_path, "r") as f:
-            return f
-    except Exception as e:
-        return f"Error reading file: {str(e)}"
-
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("-p", required=True)
@@ -61,10 +46,24 @@ def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
     print("Logs from your program will appear here!", file=sys.stderr)
 
-    detect_tool_calls(chat.choices[0].message["tool_calls"])
+    detect_tool_calls(chat.choices[0].message.tool_calls)
 
 
 if __name__ == "__main__":
     main()
 
 
+def detect_tool_calls(tool_calls):
+    for call in tool_calls:
+        if (call.function.name == "Read"):
+            arguments = json.loads(call.function.arguments)
+            f = read_tool(arguments["file_path"])
+            print(f.read())
+            f.close()
+
+def read_tool(file_path):
+    try:
+        with open(file_path, "r") as f:
+            return f
+    except Exception as e:
+        return f"Error reading file: {str(e)}"
