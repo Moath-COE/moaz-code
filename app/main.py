@@ -12,14 +12,14 @@ def detect_tool_calls(tool_calls):
     for call in tool_calls:
         if (call.function.name == "Read"):
             arguments = json.loads(call.function.arguments)
-            f = read_tool(arguments["file_path"])
-            print(f.read())
-            f.close()
+            read_tool(arguments["file_path"])
 
 def read_tool(file_path):
     try:
         with open(file_path, "r") as f:
-            return f
+            content = f.read()
+            print(content)
+            f.close()
     except Exception as e:
         return f"Error reading file: {str(e)}"
 
