@@ -61,7 +61,8 @@ def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
     print("Logs from your program will appear here!", file=sys.stderr)
 
-    detect_tool_calls(chat.choices[0].message.tool_calls)
+    if (len(chat.choices[0].message.tool_calls) > 0):
+        detect_tool_calls(chat.choices[0].message.tool_calls)
 
 
 if __name__ == "__main__":
