@@ -7,6 +7,18 @@ from openai import OpenAI
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
 
+def detect_tool_calls(tool_calls):
+    if (tool_calls.function.name == "read"):
+        f = read_tool(tool_calls.function.arguments["file_path"])
+        print(f.read())
+        f.close()
+
+def read_tool(file_path):
+    try:
+        with open(file_path, "r") as f:
+            return f
+    except Exception as e:
+        return f"Error reading file: {str(e)}"
 
 def main():
     p = argparse.ArgumentParser()
@@ -53,15 +65,3 @@ if __name__ == "__main__":
     main()
 
 
-def detect_tool_calls(tool_calls):
-    if (tool_calls.function.name == "read"):
-        f = read_tool(tool_calls.function.arguments["file_path"])
-        print(f.read())
-        f.close()
-
-def read_tool(file_path):
-    try:
-        with open(file_path, "r") as f:
-            return f
-    except Exception as e:
-        return f"Error reading file: {str(e)}"
