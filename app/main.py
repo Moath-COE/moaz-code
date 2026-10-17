@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import json
 
 from openai import OpenAI
 
@@ -8,10 +9,12 @@ API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
 
 def detect_tool_calls(tool_calls):
-    if (tool_calls.function.name == "read"):
-        f = read_tool(tool_calls.function.arguments["file_path"])
-        print(f.read())
-        f.close()
+    for call in tool_calls:
+        if (call.function.name == "read"):
+            arguments = json.loads(call.function.arguments)
+            f = read_tool(arguments["file_path"])
+            print(f.read())
+            f.close()
 
 def read_tool(file_path):
     try:
