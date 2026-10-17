@@ -63,6 +63,10 @@ def main():
 
     if (chat.choices[0].message.tool_calls and len(chat.choices[0].message.tool_calls) > 0):
         detect_tool_calls(chat.choices[0].message.tool_calls)
+    elif (chat.choices[0].message.content):
+        print(chat.choices[0].message.content)
+
+    
 
 
 if __name__ == "__main__":
