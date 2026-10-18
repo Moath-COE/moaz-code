@@ -23,22 +23,11 @@ def read_tool(file_path):
     except Exception as e:
         return f"Error reading file: {str(e)}"
 
-def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("-p", required=True)
-    args = p.parse_args()
-
-    if not API_KEY:
-        raise RuntimeError("OPENROUTER_API_KEY is not set")
-
-    client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
-
-    messages = [{"role": "user", "content": args.p}]
-
-    while True:
-        response = client.chat.completions.create(
+def call_openai(client, messages):
+    return client.chat.completions.create(
         model="anthropic/claude-haiku-4.5",
         messages=messages,
+        # Define the tools that the model can call
         tools=[{
             "type": "function",
             "function": {
@@ -58,6 +47,21 @@ def main():
             }]
         )
 
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("-p", required=True)
+    args = p.parse_args()
+
+    if not API_KEY:
+        raise RuntimeError("OPENROUTER_API_KEY is not set")
+
+    client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
+
+    messages = [{"role": "user", "content": args.p}]
+
+    while True:
+        response = call_openai(client, messages)
+
         if not response.choices or len(response.choices) == 0:
                 raise RuntimeError("no choices in response")
             
@@ -69,6 +73,7 @@ def main():
                 messages.append({"role": "tool", "tool_call_id": call.id, "content": tool_response})
         elif (response.choices[0].message.content):
             sys.stdout.write(response.choices[0].message.content)
+            break
 
 
 
