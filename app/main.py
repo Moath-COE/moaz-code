@@ -8,18 +8,18 @@ from openai import OpenAI
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
 
-def detect_tool_calls(tool_calls):
-    for call in tool_calls:
-        if (call.function.name == "Read"):
-            arguments = json.loads(call.function.arguments)
-            read_tool(arguments["file_path"])
+def execute_tool_call(tool_call):
+    if (tool_call.function.name == "Read"):
+        arguments = json.loads(tool_call.function.arguments)
+        file_content = read_tool(arguments["file_path"])
+        return file_content
+    else:
+        return f"Unknown tool: {tool_call.function.name}"
 
 def read_tool(file_path):
     try:
-        with open(file_path, "r") as f:
-            content = f.read()
-            print(content)
-            f.close()
+        with open(file_path, "r", encoding="utf-8") as f:
+            return f.read()
     except Exception as e:
         return f"Error reading file: {str(e)}"
 
@@ -33,9 +33,12 @@ def main():
 
     client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
 
-    chat = client.chat.completions.create(
+    messages = [{"role": "user", "content": args.p}]
+
+    while True:
+        response = client.chat.completions.create(
         model="anthropic/claude-haiku-4.5",
-        messages=[{"role": "user", "content": args.p}],
+        messages=messages,
         tools=[{
             "type": "function",
             "function": {
@@ -53,20 +56,20 @@ def main():
                 }
             }
             }]
-    )
+        )
 
-    if not chat.choices or len(chat.choices) == 0:
-        raise RuntimeError("no choices in response")
+        if not response.choices or len(response.choices) == 0:
+                raise RuntimeError("no choices in response")
+            
+        messages.append(response.choices[0].message)
 
-    # You can use print statements as follows for debugging, they'll be visible when running tests.
-    print("Logs from your program will appear here!", file=sys.stderr)
+        if response.choices[0].message.tool_calls:
+            for call in response.choices[0].message.tool_calls:
+                tool_response = execute_tool_call(call)
+                messages.append({"role": "tool", "tool_call_id": call.id, "content": tool_response})
+        elif (response.choices[0].message.content):
+            sys.stdout.write(response.choices[0].message.content)
 
-    if (chat.choices[0].message.tool_calls and len(chat.choices[0].message.tool_calls) > 0):
-        detect_tool_calls(chat.choices[0].message.tool_calls)
-    elif (chat.choices[0].message.content):
-        print(chat.choices[0].message.content)
-
-    
 
 
 if __name__ == "__main__":
