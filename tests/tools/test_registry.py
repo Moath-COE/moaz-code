@@ -1,28 +1,7 @@
 import pytest
 
-from app.tools.base import Tool
 from app.tools.registry import ToolRegistry
-
-
-class FakeTool(Tool):
-    """A stand-in tool so the registry is tested without any real tool.
-
-    It returns a canned string and remembers how it was called.
-    """
-
-    def __init__(self, name: str = "Fake", output: str = "fake output"):
-        super().__init__(
-            name=name,
-            description="a fake tool for tests",
-            properties={"x": {"type": "string"}},
-            required=["x"],
-        )
-        self.output = output
-        self.calls: list[dict] = []
-
-    def run(self, **kwargs) -> str:
-        self.calls.append(kwargs)
-        return self.output
+from tests.fakes import FakeTool
 
 
 @pytest.fixture
@@ -88,4 +67,26 @@ def test_register_duplicate_name_raises_value_error(registry):
     with pytest.raises(ValueError, match="Duplicate"):
         registry.register(tool2)
 
-    assert registry.execute("Duplicate") == "first"
+    assert registry.execute("Duplicate", x="value") == "first"
+
+
+def test_execute_missing_required_argument_returns_error_without_running_tool(
+    registry,
+):
+    tool = FakeTool(name="Fake")  # requires "x"
+    registry.register(tool)
+
+    result = registry.execute("Fake")
+
+    assert "Fake" in result
+    assert tool.calls == []
+
+
+def test_execute_unexpected_argument_returns_error_without_running_tool(registry):
+    tool = FakeTool(name="Fake")  # accepts only "x"
+    registry.register(tool)
+
+    result = registry.execute("Fake", x="1", bogus="2")
+
+    assert "bogus" in result
+    assert tool.calls == []
