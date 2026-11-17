@@ -38,8 +38,8 @@ def main():
     agent = Agent(
         client=client,
         registry=tool_registry,
-        # model="anthropic/claude-haiku-4.5",
-        model="nvidia/nemotron-3-ultra-550b-a55b:free",
+        model="anthropic/claude-haiku-4.5",
+        # model="nvidia/nemotron-3-ultra-550b-a55b:free",
     )
 
     try:
