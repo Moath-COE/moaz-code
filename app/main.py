@@ -4,8 +4,9 @@ import os
 import sys
 
 from openai import OpenAI
-from tools.read import ReadTool
-from tools.registry import ToolRegistry
+
+from app.tools.read import ReadTool
+from app.tools.registry import ToolRegistry
 
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
@@ -21,7 +22,7 @@ def call_openai(client, messages):
         model="anthropic/claude-haiku-4.5",
         messages=messages,
         # Define the tools that the model can call
-        tools=[tool_registry.tools],
+        tools=tool_registry.tools,
     )
 
 
