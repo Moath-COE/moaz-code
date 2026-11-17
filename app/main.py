@@ -7,6 +7,7 @@ from openai import OpenAI
 from app.agent import Agent
 from app.tools.read import ReadTool
 from app.tools.registry import ToolRegistry
+from app.tools.write import WriteTool
 
 
 def build_client():
@@ -29,14 +30,16 @@ def main():
     tool_registry = ToolRegistry()
 
     read_tool = ReadTool()
+    write_tool = WriteTool()
 
     tool_registry.register(read_tool)
+    tool_registry.register(write_tool)
 
     agent = Agent(
         client=client,
         registry=tool_registry,
-        model="anthropic/claude-haiku-4.5",
-        # model="nvidia/nemotron-3-ultra-550b-a55b:free",
+        # model="anthropic/claude-haiku-4.5",
+        model="nvidia/nemotron-3-ultra-550b-a55b:free",
     )
 
     try:
