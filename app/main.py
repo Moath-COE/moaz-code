@@ -25,7 +25,8 @@ def read_tool(file_path):
 
 def call_openai(client, messages):
     return client.chat.completions.create(
-        model="nvidia/nemotron-3-ultra-550b-a55b:free",
+        # model="nvidia/nemotron-3-ultra-550b-a55b:free",
+        model="anthropic/claude-haiku-4.5",
         messages=messages,
         # Define the tools that the model can call
         tools=[{
