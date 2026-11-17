@@ -1,27 +1,19 @@
 import argparse
+import json
 import os
 import sys
-import json
 
 from openai import OpenAI
+from tools.read import ReadTool
+from tools.registry import ToolRegistry
 
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
 
-def execute_tool_call(tool_call):
-    if (tool_call.function.name == "Read"):
-        arguments = json.loads(tool_call.function.arguments)
-        file_content = read_tool(arguments["file_path"])
-        return file_content
-    else:
-        return f"Unknown tool: {tool_call.function.name}"
+read_tool = ReadTool()
+tool_registry = ToolRegistry()
+tool_registry.register(read_tool)
 
-def read_tool(file_path):
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            return f.read()
-    except Exception as e:
-        return f"Error reading file: {str(e)}"
 
 def call_openai(client, messages):
     return client.chat.completions.create(
@@ -29,24 +21,9 @@ def call_openai(client, messages):
         model="anthropic/claude-haiku-4.5",
         messages=messages,
         # Define the tools that the model can call
-        tools=[{
-            "type": "function",
-            "function": {
-                "name": "Read",
-                "description": "Read and return the contents of a file",
-                "parameters": {
-                "type": "object",
-                "properties": {
-                    "file_path": {
-                    "type": "string",
-                    "description": "The path to the file to read"
-                    }
-                },
-                "required": ["file_path"]
-                }
-            }
-            }]
-        )
+        tools=[tool_registry.tools],
+    )
+
 
 def main():
     p = argparse.ArgumentParser()
@@ -64,21 +41,22 @@ def main():
         response = call_openai(client, messages)
 
         if not response.choices or len(response.choices) == 0:
-                raise RuntimeError("no choices in response")
-            
+            raise RuntimeError("no choices in response")
+
         messages.append(response.choices[0].message)
 
         if response.choices[0].message.tool_calls:
             for call in response.choices[0].message.tool_calls:
-                tool_response = execute_tool_call(call)
-                messages.append({"role": "tool", "tool_call_id": call.id, "content": tool_response})
-        elif (response.choices[0].message.content):
+                tool_response = tool_registry.execute(
+                    call.function.name, **json.loads(call.function.arguments)
+                )
+                messages.append(
+                    {"role": "tool", "tool_call_id": call.id, "content": tool_response}
+                )
+        elif response.choices[0].message.content:
             sys.stdout.write(response.choices[0].message.content)
             break
 
 
-
 if __name__ == "__main__":
     main()
-
-
