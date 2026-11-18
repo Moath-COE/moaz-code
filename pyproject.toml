@@ -5,6 +5,7 @@ requires-python = ">=3.14"
 
 dependencies = [
     "openai>=2.15.0",
+    "pyyaml>=6.0.3",
 ]
 
 [tool.pytest.ini_options]
@@ -15,4 +16,5 @@ testpaths = ["tests"]
 dev = [
     "pytest>=9.2.0",
     "ruff>=0.17.5",
+    "types-pyyaml>=6.0.12.20261113",
 ]

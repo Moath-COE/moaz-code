@@ -192,3 +192,36 @@ def test_max_iterations_limit(registry):
         agent.run("call the tool repeatedly")
 
     assert len(client.calls) == 3  # Should only call the client max_iterations times
+
+
+# --- Skills step 9: the system prompt (uncomment when you reach it) ----------
+
+# def test_system_prompt_is_the_first_message(registry):
+#     client = FakeClient([make_response(content="apple")])
+#     agent = make_agent(client, registry, system_prompt="You have skills.")
+#
+#     agent.run("which skill?")
+#
+#     assert client.calls[0]["messages"][:2] == [
+#         {"role": "system", "content": "You have skills."},
+#         {"role": "user", "content": "which skill?"},
+#     ]
+#
+#
+# def test_no_system_message_when_there_is_no_system_prompt(registry):
+#     client = FakeClient([make_response(content="hi")])
+#     agent = make_agent(client, registry)
+#
+#     agent.run("hello")
+#
+#     assert client.calls[0]["messages"][0]["role"] == "user"
+#
+#
+# def test_empty_system_prompt_adds_no_system_message(registry):
+#     # render_skills([]) returns "", and "" must not become an empty message.
+#     client = FakeClient([make_response(content="hi")])
+#     agent = make_agent(client, registry, system_prompt="")
+#
+#     agent.run("hello")
+#
+#     assert client.calls[0]["messages"][0]["role"] == "user"
