@@ -23,6 +23,63 @@ and uncomment the relevant code, and submit to pass the first stage:
 codecrafters submit
 ```
 
+# Running locally in a container
+
+Once the agent has a `Bash` tool, the model can run arbitrary commands. To keep
+that away from your real machine, run the agent inside a container. The project
+is mounted **read-only**, with one writable folder, `test_files/`. This is for
+local development only. CodeCrafters doesn't use it, and everything lives in
+`docker/`.
+
+```sh
+# From the project root. Opens a shell inside the container.
+./dev.sh
+```
+
+The shell starts in `/workspace/test_files`, so any relative path the agent
+writes lands there. Inside the container:
+
+```sh
+/workspace/your_program.sh -p "create a file named hello.txt"  # run the agent
+cd /workspace && uv run pytest                                 # tests
+```
+
+Or run a single command without opening a shell:
+
+```sh
+./dev.sh uv run --project /workspace pytest /workspace
+```
+
+Notes:
+
+- Edit code on your host as usual. The container sees your edits immediately.
+- The container can't change the project, so run `ruff format`, `git` and
+  `codecrafters submit` on your host.
+- The agent can read your source with absolute paths (`/workspace/app/...`),
+  but it can only write inside `test_files/`. Prompts that name a path in the
+  project root will get a "read-only file system" error.
+- Keep `test_files/` for throwaway files. The agent may overwrite or delete
+  what's in it.
+- The first run builds the image. Rebuild after editing the Dockerfile with
+  `docker compose -f docker/compose.yml build`.
+- File ownership: the image uses UID/GID 1000. If `id -u` on your host differs,
+  build with `HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker/compose.yml build`.
+- Your `.env` is loaded as environment variables, and the file itself is hidden
+  inside the container.
+- The compose file sets `UV_FROZEN`, `RUFF_CACHE_DIR` and
+  `PYTEST_ADDOPTS` so uv, ruff and pytest don't try to write into the
+  read-only project.
+
+What this does and doesn't protect against:
+
+- The container can't modify your code, your git history or anything outside
+  the project. It runs as a non-root user with all Linux capabilities dropped.
+- `test_files/` is writable, so a bad command can still wipe it.
+- The network is open, because the agent needs to reach OpenRouter. The API key
+  is in the container's environment, so a command that runs `env` can read it.
+  Use a key with a low spending limit.
+- This is a safety net, not a hardened sandbox.
+
 # Stage 2 & beyond
 
 Note: This section is for stages 2 and beyond.

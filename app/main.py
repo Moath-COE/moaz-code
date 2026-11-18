@@ -5,6 +5,7 @@ import sys
 from openai import OpenAI
 
 from app.agent import Agent
+from app.tools.bash import BashTool
 from app.tools.read import ReadTool
 from app.tools.registry import ToolRegistry
 from app.tools.write import WriteTool
@@ -31,15 +32,17 @@ def main():
 
     read_tool = ReadTool()
     write_tool = WriteTool()
+    bash_tool = BashTool()
 
     tool_registry.register(read_tool)
     tool_registry.register(write_tool)
+    tool_registry.register(bash_tool)
 
     agent = Agent(
         client=client,
         registry=tool_registry,
-        model="anthropic/claude-haiku-4.5",
-        # model="nvidia/nemotron-3-ultra-550b-a55b:free",
+        # model="anthropic/claude-haiku-4.5",
+        model="nvidia/nemotron-3-ultra-550b-a55b:free",
     )
 
     try:
@@ -48,6 +51,8 @@ def main():
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
     sys.stdout.write(answer)
+
+    print()
 
 
 if __name__ == "__main__":

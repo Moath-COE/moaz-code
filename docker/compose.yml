@@ -1,0 +1,39 @@
+# Local development container. Run from the project root:
+#   docker compose -f docker/compose.yml run --rm dev
+name: claude-code-dev
+
+services:
+  dev:
+    build:
+      context: .
+      args:
+        UID: ${HOST_UID:-1000}
+        GID: ${HOST_GID:-1000}
+    # Relative paths used by the agent resolve here, the only writable folder.
+    working_dir: /workspace/test_files
+    volumes:
+      # The whole project is read-only inside the container (this includes .git).
+      # Edits you make on the host still show up immediately.
+      - ..:/workspace:ro
+      # The one writable folder. It must already exist on the host.
+      - ../test_files:/workspace/test_files
+      # Hide the .env file from the container's filesystem. The variables are
+      # still injected below, so the program works.
+      - /dev/null:/workspace/.env:ro
+      # Persistent virtualenv, separate from the host's .venv.
+      - venv:/opt/venv
+    env_file: ../.env
+    environment:
+      # Tools that normally write next to the code must not, as it's read-only.
+      UV_FROZEN: "1"
+      RUFF_CACHE_DIR: /tmp/ruff
+      PYTEST_ADDOPTS: "-p no:cacheprovider"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stdin_open: true
+    tty: true
+
+volumes:
+  venv:
