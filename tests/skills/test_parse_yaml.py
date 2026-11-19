@@ -4,7 +4,7 @@ Step 0 of the gate work. The gate sends this text to the model, so its exact
 shape matters (the CodeCrafters tester compares the model's answer to it).
 """
 
-from app.skills.parse_yaml import parse_body
+from app.skills.utils.parse_yaml import parse_body
 
 
 def test_returns_the_text_after_the_frontmatter():

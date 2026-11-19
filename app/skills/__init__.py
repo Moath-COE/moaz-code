@@ -1,6 +1,6 @@
 # app/skills/__init__.py
 from .loader import SkillsLoader
 from .models import Skill
-from .render import render_skills
+from .registry import SkillRegistry
 
-__all__ = ["Skill", "SkillsLoader", "render_skills"]
+__all__ = ["Skill", "SkillRegistry", "SkillsLoader"]

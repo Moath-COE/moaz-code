@@ -2,7 +2,7 @@
 
 API these tests pin down:
 
-    Gate(skills: list[Skill]).parse_user_prompt(prompt: str) -> str
+    Gate(registry)  # needs only registry.get_body(name) -> str | None.parse_user_prompt(prompt: str) -> str
 
 Rules:
     - "/<name>" (optionally followed by words) where <name> is a known skill
@@ -13,30 +13,28 @@ Work through the steps in order. Uncomment ONE step, watch it fail, then make
 it pass. Do not uncomment the next step until the current one is green.
 """
 
-from pathlib import Path
-
 import pytest
 
 from app.input.gate import Gate
-from app.skills import Skill, SkillsLoader
+
+
+class FakeRegistry:
+    """Stands in for SkillRegistry: bodies come from a dict, no files involved."""
+
+    def __init__(self, bodies: dict[str, str]):
+        self.bodies = bodies
+
+    def get_body(self, name: str) -> str | None:
+        return self.bodies.get(name)
+
+
+def gate_with_skills(bodies: dict[str, str]) -> Gate:
+    return Gate(FakeRegistry(bodies))
 
 
 @pytest.fixture
 def gate() -> Gate:
-    """A gate whose skill files do NOT exist. Fine for pass-through tests,
-    because a prompt that is not expanded never reads a file."""
-    return Gate(skills=[Skill("apple", "Deploys apple.", Path("a/SKILL.md"))])
-
-
-def gate_with_skills(root: Path, bodies: dict[str, str]) -> Gate:
-    """Write real skills under `root` ({name: body}) and load them for real."""
-    for name, body in bodies.items():
-        skill_dir = root / name
-        skill_dir.mkdir(parents=True)
-        (skill_dir / "SKILL.md").write_text(
-            f"---\ndescription: {name} skill.\n---\n\n{body}\n", encoding="utf-8"
-        )
-    return Gate(SkillsLoader([root]).load())
+    return gate_with_skills({"apple": "Say blueberry."})
 
 
 # --- not a command -> unchanged --------------------------------------
@@ -75,8 +73,8 @@ def test_unknown_skill_leaves_the_prompt_unchanged(gate, prompt):
 # --- a known skill -> its body ---------------------------------------
 
 
-def test_known_skill_is_replaced_by_its_body(tmp_path):
-    gate = gate_with_skills(tmp_path / "skills", {"apple": "Say blueberry."})
+def test_known_skill_is_replaced_by_its_body():
+    gate = gate_with_skills({"apple": "Say blueberry."})
 
     assert gate.parse_user_prompt("/apple") == "Say blueberry."
 
@@ -84,8 +82,8 @@ def test_known_skill_is_replaced_by_its_body(tmp_path):
 # --- a preceding empty space is ignored -----------------------------------
 
 
-def test_leading_space_is_ignored(tmp_path):
-    gate = gate_with_skills(tmp_path / "skills", {"apple": "Say blueberry."})
+def test_leading_space_is_ignored():
+    gate = gate_with_skills({"apple": "Say blueberry."})
 
     assert gate.parse_user_prompt(" /apple") == "Say blueberry."
 
@@ -93,8 +91,8 @@ def test_leading_space_is_ignored(tmp_path):
 # --- words after the name --------------------------------------------
 
 
-def test_words_after_the_skill_name_are_ignored(tmp_path):
-    gate = gate_with_skills(tmp_path / "skills", {"apple": "Say blueberry."})
+def test_words_after_the_skill_name_are_ignored():
+    gate = gate_with_skills({"apple": "Say blueberry."})
 
     assert gate.parse_user_prompt("/apple please hurry") == "Say blueberry."
 
@@ -102,10 +100,8 @@ def test_words_after_the_skill_name_are_ignored(tmp_path):
 # --- only the invoked skill is loaded --------------------------------
 
 
-def test_only_the_invoked_skills_body_is_returned(tmp_path):
-    gate = gate_with_skills(
-        tmp_path / "skills", {"apple": "Say blueberry.", "grape": "Say mango."}
-    )
+def test_only_the_invoked_skills_body_is_returned():
+    gate = gate_with_skills({"apple": "Say blueberry.", "grape": "Say mango."})
 
     result = gate.parse_user_prompt("/apple")
 
@@ -116,11 +112,11 @@ def test_only_the_invoked_skills_body_is_returned(tmp_path):
 # --- the exact text from the stage ------------------------------------
 
 
-def test_body_keeps_its_inner_blank_line(tmp_path):
+def test_body_keeps_its_inner_blank_line():
     body = (
         "Respond with exactly one word: blueberry\n\n"
         "Do not add any other text, punctuation, or formatting."
     )
-    gate = gate_with_skills(tmp_path / "skills", {"apple": body})
+    gate = gate_with_skills({"apple": body})
 
     assert gate.parse_user_prompt("/apple") == body

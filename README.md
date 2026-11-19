@@ -76,6 +76,7 @@ off your machine, run it in the dev container. The project is mounted
 ```sh
 ./dev.sh                                  # open a shell in the container
 agent "create a file named hello.txt"     # run the agent (inside the container)
+LOG_LEVEL=INFO agent "create a file named hello.txt" # To run with logs on
 ```
 
 - Edit code on your host. The container sees changes immediately.

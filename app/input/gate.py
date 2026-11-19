@@ -1,14 +1,16 @@
 import logging
 
-from app.skills import Skill
-from app.skills.render import load_skill_body
+from app.skills import SkillRegistry
 
 logger = logging.getLogger(__name__)
 
 
 class Gate:
-    def __init__(self, skills: list[Skill]):
-        self.skills = {skill.name: skill for skill in skills}
+    """Turns a raw user prompt into what the model sees. Parsing only: it asks
+    the registry for skill bodies and never touches the filesystem itself."""
+
+    def __init__(self, registry: SkillRegistry):
+        self.registry = registry
 
     def parse_user_prompt(self, user_prompt: str) -> str:
         """
@@ -18,23 +20,19 @@ class Gate:
         if not words:
             return user_prompt
 
-        skill = self._detect_skill_command(words[0])
+        name = self._parse_command_name(words[0])
+        body = self.registry.get_body(name) if name else None
 
-        if not skill:
-            return user_prompt  # Not a command, return unchanged
+        if body is None:
+            return user_prompt  # Not a command or unknown skill, return unchanged
 
-        logger.info("Detected skill command: %s", skill.name)
+        logger.info("Detected skill command: %s", name)
 
-        return load_skill_body(skill)
+        return body
 
-    def _detect_skill_command(self, first_word: str) -> Skill | None:
-        """
-        Detect if the prompt starts with a skill command (e.g., "/skill_name").
-        If so, return the skill; otherwise, return None.
-        """
+    def _parse_command_name(self, first_word: str) -> str | None:
+        """Return the name in a leading "/name", or None if it isn't a command."""
         if not first_word.startswith("/"):
             return None
 
-        skill_name = first_word[1:]  # Remove the leading "/"
-
-        return self.skills.get(skill_name)  # Return the skill if it exists, else None
+        return first_word[1:]  # Remove the leading "/"

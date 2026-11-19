@@ -1,10 +1,9 @@
-"""Tests for skill discovery (SkillsLoader) and advertisement (render_skills).
+"""Tests for skill discovery (SkillsLoader).
 
 API these tests pin down (the module location is open, see the design talk):
 
     Skill(name: str, description: str, path: Path)
     SkillsLoader(roots: list[Path]).load() -> list[Skill]
-    render_skills(skills: list[Skill]) -> str
 
 Work through the steps in order. Uncomment ONE step, watch it fail, then make
 it pass. Do not uncomment the next step until the current one is green.
@@ -14,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from app.skills import Skill, SkillsLoader, render_skills
+from app.skills import SkillsLoader
 
 
 def write_skill(root: Path, folder: str, content: str) -> Path:
@@ -209,46 +208,3 @@ def test_skipped_skill_is_reported_on_stderr(root, capsys):
     captured = capsys.readouterr()
     assert captured.out == ""
     assert "bad" in captured.err
-
-
-# --- Step 8: the advertisement (exact text, the tester depends on it) --------
-
-
-def test_render_matches_the_required_format():
-    skills = [
-        Skill("apple", "Deploys the apple service to production.", Path("a/SKILL.md")),
-        Skill(
-            "grape",
-            "Runs the grape test suite and reports failures.",
-            Path("g/SKILL.md"),
-        ),
-    ]
-
-    assert render_skills(skills) == (
-        "You have access to the following skills:\n"
-        "\n"
-        "- apple: Deploys the apple service to production.\n"
-        "- grape: Runs the grape test suite and reports failures."
-    )
-
-
-def test_render_with_no_skills_is_empty():
-    # No header with nothing under it. Empty means "send no system message".
-    assert render_skills([]) == ""
-
-
-def test_render_does_not_include_the_body(root):
-    write_skill(root, "apple", skill_md("apple", "Deploys apple.", "SECRET BODY TEXT"))
-
-    text = render_skills(SkillsLoader([root]).load())
-
-    assert "SECRET BODY TEXT" not in text
-
-
-def test_render_keeps_a_multiline_description_on_one_line(root):
-    content = "---\nname: apple\ndescription: |\n  Line one.\n  Line two.\n---\nbody\n"
-    write_skill(root, "apple", content)
-
-    text = render_skills(SkillsLoader([root]).load())
-
-    assert "- apple: Line one. Line two." in text

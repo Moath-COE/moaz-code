@@ -7,7 +7,7 @@ from pathlib import Path
 from app.agent import Agent
 from app.input.gate import Gate
 from app.prompts.system_prompt import build_system_prompt
-from app.skills import SkillsLoader, render_skills
+from app.skills import SkillRegistry, SkillsLoader
 from app.tools.bash import BashTool
 from app.tools.read import ReadTool
 from app.tools.registry import ToolRegistry
@@ -41,11 +41,11 @@ def main():
     SKILL_ROOTS = [Path(".agents/skills"), Path(".claude/skills")]
 
     skills = SkillsLoader(SKILL_ROOTS).load()
-    skills_prompt = render_skills(skills)
+    skills_registry = SkillRegistry(skills)
 
-    SYSTEM_PROMPT = build_system_prompt(skills_prompt)
+    SYSTEM_PROMPT = build_system_prompt(skills_registry.render())
 
-    gate = Gate(skills)
+    gate = Gate(skills_registry)
 
     agent = Agent(
         client=client,

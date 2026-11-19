@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 from app.skills.models import Skill
-from app.skills.parse_yaml import parse_frontmatter
+from app.skills.utils.parse_yaml import parse_frontmatter
 
 
 class SkillsLoader:
