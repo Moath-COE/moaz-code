@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LinkedIn Cover</title>
+<style>
+@font-face { font-family: 'Bricolage'; src: url('file:///home/moaz-dev/dev/projects/moaz-coe/node_modules/@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-wght-normal.woff2') format('woff2'); font-weight: 200 800; }
+@font-face { font-family: 'PlexMono'; src: url('file:///home/moaz-dev/dev/projects/moaz-coe/node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2') format('woff2'); font-weight: 500; }
+
+:root {
+	--paper: #f7f8fa; --paper-deep: #eceff5; --ink: #0e1528; --muted: #525c73; --faint: #848da3;
+	--rule: #dde1ea; --lapis: #34508f; --gold: #b08a45; --grid: rgb(52 80 143 / 0.07);
+	--star-line: rgb(52 80 143 / 0.16); --glyph: #f7f8fa; --dot: #d9b46a;
+}
+.dark {
+	--paper: #0b1020; --paper-deep: #121a33; --ink: #e6e9f2; --muted: #97a0b6; --faint: #69728e;
+	--rule: #1d2542; --lapis: #a5b3dc; --gold: #c4a265; --grid: rgb(165 179 220 / 0.06);
+	--star-line: rgb(165 179 220 / 0.14); --glyph: #0b1020; --dot: #8a6a2c;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1584px; height: 396px; overflow: hidden; }
+body { background: var(--paper); color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+.cover { position: relative; width: 1584px; height: 396px; overflow: hidden; background:
+	radial-gradient(ellipse 60% 120% at 100% 50%, var(--paper-deep), transparent 70%), var(--paper); }
+
+.grid { position: absolute; inset: 0; background-image:
+	linear-gradient(var(--grid) 1px, transparent 1px),
+	linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+	background-size: 33px 33px; background-position: center center;
+	-webkit-mask-image: linear-gradient(90deg, #000 0%, #000 45%, transparent 95%); }
+
+/* Large khatam rings, left — sits behind the profile photo */
+.rings { position: absolute; left: -150px; top: -230px; width: 760px; height: 760px; }
+.rings path { fill: none; stroke: var(--star-line); }
+
+.content { position: absolute; left: 640px; right: 96px; top: 0; bottom: 0;
+	display: flex; flex-direction: column; justify-content: center; }
+
+.eyebrow { display: flex; align-items: center; gap: 16px; font: 500 15px/1 'PlexMono', monospace;
+	letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+.eyebrow .sep { width: 7px; height: 7px; background: var(--gold); transform: rotate(45deg); }
+.mark { width: 42px; height: 42px; flex: none; }
+.mark .s { fill: var(--lapis); } .mark .g { stroke: var(--glyph); } .mark .d { fill: var(--dot); }
+
+h1 { margin-top: 26px; font: 500 66px/1.05 'Bricolage', sans-serif; letter-spacing: -0.025em;
+	font-variation-settings: 'wdth' 100; }
+h1 em { font-style: normal; color: var(--lapis); }
+
+.foot { margin-top: 30px; display: flex; align-items: center; gap: 18px;
+	font: 500 13px/1 'PlexMono', monospace; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+.foot .rule { width: 56px; height: 1px; background: var(--gold); }
+.foot .dot { color: var(--gold); }
+
+.url { position: absolute; right: 96px; bottom: 30px; font: 500 13px/1 'PlexMono', monospace;
+	letter-spacing: 0.12em; color: var(--faint); }
+</style>
+</head>
+<body>
+<div class="cover" id="cover">
+	<div class="grid"></div>
+	<svg class="rings" viewBox="0 0 64 64" aria-hidden="true">
+		<path stroke-width="0.12" d="M32 2L40.79 10.79H53.21V23.21L62 32L53.21 40.79V53.21H40.79L32 62L23.21 53.21H10.79V40.79L2 32L10.79 23.21V10.79H23.21Z"/>
+		<path stroke-width="0.1" transform="translate(32 32) scale(0.78) translate(-32 -32)" d="M32 2L40.79 10.79H53.21V23.21L62 32L53.21 40.79V53.21H40.79L32 62L23.21 53.21H10.79V40.79L2 32L10.79 23.21V10.79H23.21Z"/>
+		<path stroke-width="0.08" transform="translate(32 32) scale(0.56) translate(-32 -32)" d="M32 2L40.79 10.79H53.21V23.21L62 32L53.21 40.79V53.21H40.79L32 62L23.21 53.21H10.79V40.79L2 32L10.79 23.21V10.79H23.21Z"/>
+		<path stroke-width="0.08" transform="translate(32 32) rotate(22.5) scale(0.56) translate(-32 -32)" d="M32 2L40.79 10.79H53.21V23.21L62 32L53.21 40.79V53.21H40.79L32 62L23.21 53.21H10.79V40.79L2 32L10.79 23.21V10.79H23.21Z"/>
+	</svg>
+
+	<div class="content">
+		<div class="eyebrow">
+			<svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+				<path class="s" d="M32 2L40.79 10.79H53.21V23.21L62 32L53.21 40.79V53.21H40.79L32 62L23.21 53.21H10.79V40.79L2 32L10.79 23.21V10.79H23.21Z"/>
+				<g transform="translate(32 32) scale(0.6) translate(-32 -33)">
+					<path class="g" d="M16 54V30H48V12H30V30" fill="none" stroke-width="6.5" stroke-linecap="square"/>
+					<rect class="d" x="36" y="18" width="6" height="6"/>
+				</g>
+			</svg>
+			<span>AI Engineer</span><span class="sep"></span><span>Products &amp; Business</span>
+		</div>
+		<h1>I build AI products that<br>deliver <em>real value.</em></h1>
+		<div class="foot">
+			<span class="rule"></span>
+			<span>AI engineering</span><span class="dot">✦</span><span>Entrepreneurship</span><span class="dot">✦</span><span>Building in public</span>
+		</div>
+	</div>
+	<div class="url">moaz-coe.com</div>
+</div>
+<script>
+	if (location.hash === '#dark') document.getElementById('cover').classList.add('dark'), document.body.classList.add('dark');
+</script>
+</body>
+</html>

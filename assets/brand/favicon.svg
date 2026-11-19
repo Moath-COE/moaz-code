@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <style>
+    .s { fill: #34508f; } .g { stroke: #f7f8fa; } .d { fill: #d9b46a; }
+    @media (prefers-color-scheme: dark) { .s { fill: #a5b3dc; } .g { stroke: #0b1020; } .d { fill: #8a6a2c; } }
+  </style>
+  <path class="s" d="M32 2L40.79 10.79H53.21V23.21L62 32L53.21 40.79V53.21H40.79L32 62L23.21 53.21H10.79V40.79L2 32L10.79 23.21V10.79H23.21Z"/>
+  <g transform="translate(32 32) scale(0.6) translate(-32 -33)">
+    <path class="g" d="M16 54V30H48V12H30V30" fill="none" stroke-width="6.5" stroke-linecap="square"/>
+    <rect class="d" x="36" y="18" width="6" height="6"/>
+  </g>
+</svg>

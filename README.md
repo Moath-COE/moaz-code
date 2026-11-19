@@ -1,91 +1,94 @@
-[![progress-banner](https://backend.codecrafters.io/progress/claude-code/0d8cd209-489a-4cac-8ee9-c861c4aab9d5)](https://app.codecrafters.io/users/Moath-COE?r=2qF)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/moaz-code/banner-dark.svg">
+    <img alt="moaz-code: a coding agent that tutors you instead of doing the work for you" src="assets/brand/moaz-code/banner-light.svg" width="100%">
+  </picture>
+</p>
 
-This is a starting point for Python solutions to the
-["Build Your own Claude Code" Challenge](https://codecrafters.io/challenges/claude-code).
+<p align="center">
+  <b>A coding agent that teaches you to code, instead of coding for you.</b>
+</p>
 
-Claude Code is an AI coding assistant that uses Large Language Models (LLMs) to
-understand code and perform actions through tool calls. In this challenge,
-you'll build your own Claude Code from scratch by implementing an LLM-powered
-coding assistant.
+---
 
-Along the way you'll learn about HTTP RESTful APIs, OpenAI-compatible tool
-calling, agent loop, and how to integrate multiple tools into an AI assistant.
+## Overview
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+Coding agents can now write whole features from one sentence. That feels
+productive, but if you're learning to code, you end up approving work you
+couldn't write, explain or debug yourself. The AI learned. You didn't.
 
-# Passing the first stage
+Moaz-Code is a CLI coding agent built for people who want to actually get
+better. It works like a senior engineer tutoring you: it explains the _why_,
+points out problems, asks for the test first and reviews your code honestly.
+Then it leaves the keyboard to you.
 
-The entry point for your `claude-code` implementation is in `app/main.py`. Study
-and uncomment the relevant code, and submit to pass the first stage:
+The name plays on [moaz-coe.com](https://moaz-coe.com).
 
-```sh
-codecrafters submit
+## Implementation
+
+A small agent written from scratch in object-oriented Python:
+
+```
+-p "prompt" ─▶ Gate (slash commands → skills)
+             ─▶ Agent loop ──▶ LLM (OpenRouter)
+                    ▲              │ tool calls
+                    └── ToolRegistry ◀┘  Read · Write · Bash
+             ─▶ final answer on stdout (logs go to stderr)
 ```
 
-# Running locally in a container
+| Path                    | Responsibility                                                  |
+| ----------------------- | --------------------------------------------------------------- |
+| `app/main.py`           | Composition root: builds the client, registry, skills and agent |
+| `app/agent.py`          | The agent loop: call the model, run tools, repeat               |
+| `app/tools/base.py`     | `Tool` ABC: `name`, `description`, `properties`, `run()`        |
+| `app/tools/registry.py` | `ToolRegistry`: name → tool, schema list, dispatch              |
+| `app/skills/`           | Load, parse and render skills for the system prompt             |
+| `app/input/gate.py`     | Turns `/skill` slash commands into prompts                      |
+| `app/prompts/`          | System prompt construction                                      |
 
-Once the agent has a `Bash` tool, the model can run arbitrary commands. To keep
-that away from your real machine, run the agent inside a container. The project
-is mounted **read-only**, with one writable folder, `agent_workspace/`. This is for
-local development only. CodeCrafters doesn't use it, and everything lives in
-`docker/`.
+Tools return error _strings_ instead of raising, so the model sees the failure
+and can recover. Skills are loaded from `.agents/skills/` and
+`.claude/skills/`, where each skill is a `SKILL.md` file with YAML frontmatter.
 
-```sh
-# From the project root. Opens a shell inside the container.
-./dev.sh
-```
+## Running it
 
-The shell starts in `/workspace/agent_workspace`, so any relative path the agent
-writes lands there. Inside the container:
-
-```sh
-agent "create a file named hello.txt"  # run the agent
-cd /workspace && uv run pytest                                 # tests
-```
-
-Or run a single command without opening a shell:
+You need [`uv`](https://docs.astral.sh/uv/) and Python ≥ 3.14.
 
 ```sh
-./dev.sh uv run --project /workspace pytest /workspace
+echo 'OPENROUTER_API_KEY=sk-or-...' > .env
+./your_program.sh -p "explain what app/agent.py does"
 ```
 
-Notes:
+Development:
 
-- Edit code on your host as usual. The container sees your edits immediately.
-- The container can't change the project, so run `ruff format`, `git` and
-  `codecrafters submit` on your host.
-- The agent can read your source with absolute paths (`/workspace/app/...`),
-  but it can only write inside `agent_workspace/`. Prompts that name a path in the
-  project root will get a "read-only file system" error.
-- Keep `agent_workspace/` for throwaway files. The agent may overwrite or delete
-  what's in it.
-- The first run builds the image. Rebuild after editing the Dockerfile with
-  `docker compose -f docker/compose.yml build`.
-- File ownership: the image uses UID/GID 1000. If `id -u` on your host differs,
-  build with `HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f docker/compose.yml build`.
-- Your `.env` is loaded as environment variables, and the file itself is hidden
-  inside the container.
-- The compose file sets `UV_FROZEN`, `RUFF_CACHE_DIR` and
-  `PYTEST_ADDOPTS` so uv, ruff and pytest don't try to write into the
-  read-only project.
+```sh
+uv run pytest          # tests
+uv run ruff check .    # lint
+uv run ruff format .   # format
+```
 
-What this does and doesn't protect against:
+### In a container (recommended)
 
-- The container can't modify your code, your git history or anything outside
-  the project. It runs as a non-root user with all Linux capabilities dropped.
-- `agent_workspace/` is writable, so a bad command can still wipe it.
-- The network is open, because the agent needs to reach OpenRouter. The API key
-  is in the container's environment, so a command that runs `env` can read it.
-  Use a key with a low spending limit.
+The agent has a `Bash` tool, so the model can run any command. To keep that
+off your machine, run it in the dev container. The project is mounted
+**read-only**, and only `agent_workspace/` is writable.
+
+```sh
+./dev.sh                                  # open a shell in the container
+agent "create a file named hello.txt"     # run the agent (inside the container)
+```
+
+- Edit code on your host. The container sees changes immediately.
+- Run `git` and `ruff format` on the host, because the container can't write to the project.
+- Your `.env` is passed in as environment variables. The network is open, so use an API key with a low spending limit.
+- Rebuild after editing the Dockerfile: `docker compose -f docker/compose.yml build`.
 - This is a safety net, not a hardened sandbox.
 
-# Stage 2 & beyond
+---
 
-Note: This section is for stages 2 and beyond.
-
-1. Ensure you have `uv` installed locally.
-2. Run `./your_program.sh` to run your program, which is implemented in
-   `app/main.py`.
-3. Run `codecrafters submit` to submit your solution to CodeCrafters. Test
-   output will be streamed to your terminal.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/moaz-code/signature-dark.svg">
+    <img alt="Moaz actually wrote the code." src="assets/brand/moaz-code/signature-light.svg" height="40">
+  </picture>
+</p>
