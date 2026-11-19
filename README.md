@@ -27,7 +27,7 @@ codecrafters submit
 
 Once the agent has a `Bash` tool, the model can run arbitrary commands. To keep
 that away from your real machine, run the agent inside a container. The project
-is mounted **read-only**, with one writable folder, `test_files/`. This is for
+is mounted **read-only**, with one writable folder, `agent_workspace/`. This is for
 local development only. CodeCrafters doesn't use it, and everything lives in
 `docker/`.
 
@@ -36,7 +36,7 @@ local development only. CodeCrafters doesn't use it, and everything lives in
 ./dev.sh
 ```
 
-The shell starts in `/workspace/test_files`, so any relative path the agent
+The shell starts in `/workspace/agent_workspace`, so any relative path the agent
 writes lands there. Inside the container:
 
 ```sh
@@ -56,9 +56,9 @@ Notes:
 - The container can't change the project, so run `ruff format`, `git` and
   `codecrafters submit` on your host.
 - The agent can read your source with absolute paths (`/workspace/app/...`),
-  but it can only write inside `test_files/`. Prompts that name a path in the
+  but it can only write inside `agent_workspace/`. Prompts that name a path in the
   project root will get a "read-only file system" error.
-- Keep `test_files/` for throwaway files. The agent may overwrite or delete
+- Keep `agent_workspace/` for throwaway files. The agent may overwrite or delete
   what's in it.
 - The first run builds the image. Rebuild after editing the Dockerfile with
   `docker compose -f docker/compose.yml build`.
@@ -74,7 +74,7 @@ What this does and doesn't protect against:
 
 - The container can't modify your code, your git history or anything outside
   the project. It runs as a non-root user with all Linux capabilities dropped.
-- `test_files/` is writable, so a bad command can still wipe it.
+- `agent_workspace/` is writable, so a bad command can still wipe it.
 - The network is open, because the agent needs to reach OpenRouter. The API key
   is in the container's environment, so a command that runs `env` can read it.
   Use a key with a low spending limit.

@@ -1,12 +1,13 @@
 import sys
 from pathlib import Path
 
-import yaml
-
 from app.skills.models import Skill
+from app.skills.parse_yaml import parse_frontmatter
 
 
-class SkillLoader:
+class SkillsLoader:
+    """Load skills from one or more root directories. Each root is a folder that contains zero or more skill subfolders. Each skill subfolder must contain a SKILL.md file with YAML frontmatter that defines the skill's description."""
+
     def __init__(self, roots: list[Path]):
         self.roots = roots
 
@@ -27,7 +28,7 @@ class SkillLoader:
 
         return sorted(skills.values(), key=lambda s: s.name)
 
-    # inside SkillLoader
+    # inside SkillsLoader
 
     def _skip(self, skill_dir: Path, reason: str) -> None:
         print(f"skipping skill '{skill_dir.name}': {reason}", file=sys.stderr)
@@ -44,7 +45,7 @@ class SkillLoader:
             self._skip(skill_dir, f"cannot read SKILL.md ({e})")
             return None
 
-        data = _parse_frontmatter(text)
+        data = parse_frontmatter(text)
         if data is None:
             self._skip(skill_dir, "missing or invalid frontmatter")
             return None
@@ -59,23 +60,3 @@ class SkillLoader:
             description=" ".join(description.split()),
             path=skill_file,
         )
-
-
-def _parse_frontmatter(text: str) -> dict | None:
-    """Return the YAML mapping between the first two '---' lines, or None."""
-    lines = text.splitlines()
-    if not lines or lines[0].strip() != "---":
-        return None
-
-    for end, line in enumerate(lines[1:], start=1):
-        if line.strip() == "---":  # first closing marker only
-            raw = "\n".join(lines[1:end])
-            break
-    else:  # no closing marker
-        return None
-
-    try:
-        data = yaml.safe_load(raw)
-    except yaml.YAMLError:
-        return None
-    return data if isinstance(data, dict) else None

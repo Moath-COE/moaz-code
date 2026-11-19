@@ -2,6 +2,8 @@ from app.tools.base import Tool
 
 
 class WriteTool(Tool):
+    """A tool that writes content to a file."""
+
     def __init__(self):
         super().__init__(
             name="Write",

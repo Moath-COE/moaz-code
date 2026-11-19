@@ -1,9 +1,9 @@
-"""Tests for skill discovery (SkillLoader) and advertisement (render_skills).
+"""Tests for skill discovery (SkillsLoader) and advertisement (render_skills).
 
 API these tests pin down (the module location is open, see the design talk):
 
     Skill(name: str, description: str, path: Path)
-    SkillLoader(roots: list[Path]).load() -> list[Skill]
+    SkillsLoader(roots: list[Path]).load() -> list[Skill]
     render_skills(skills: list[Skill]) -> str
 
 Work through the steps in order. Uncomment ONE step, watch it fail, then make
@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from app.skills import Skill, SkillLoader, render_skills
+from app.skills import Skill, SkillsLoader, render_skills
 
 
 def write_skill(root: Path, folder: str, content: str) -> Path:
@@ -41,7 +41,7 @@ def root(tmp_path) -> Path:
 def test_loads_one_skill_with_name_and_description(root):
     write_skill(root, "apple", skill_md("apple", "Deploys the apple service."))
 
-    skills = SkillLoader([root]).load()
+    skills = SkillsLoader([root]).load()
 
     assert len(skills) == 1
     assert skills[0].name == "apple"
@@ -54,7 +54,7 @@ def test_loads_one_skill_with_name_and_description(root):
 
 
 def test_missing_root_gives_no_skills(tmp_path):
-    skills = SkillLoader([tmp_path / "does-not-exist"]).load()
+    skills = SkillsLoader([tmp_path / "does-not-exist"]).load()
 
     assert skills == []
 
@@ -62,7 +62,7 @@ def test_missing_root_gives_no_skills(tmp_path):
 def test_empty_root_gives_no_skills(root):
     root.mkdir()
 
-    assert SkillLoader([root]).load() == []
+    assert SkillsLoader([root]).load() == []
 
 
 # --- Step 3: several skills, several roots -----------------------------------
@@ -72,7 +72,7 @@ def test_loads_every_skill_in_a_root(root):
     write_skill(root, "apple", skill_md("apple", "Deploys apple."))
     write_skill(root, "grape", skill_md("grape", "Tests grape."))
 
-    skills = SkillLoader([root]).load()
+    skills = SkillsLoader([root]).load()
 
     assert {s.name for s in skills} == {"apple", "grape"}
 
@@ -83,7 +83,7 @@ def test_loads_skills_from_all_roots(tmp_path):
     write_skill(agents, "apple", skill_md("apple", "Deploys apple."))
     write_skill(claude, "grape", skill_md("grape", "Tests grape."))
 
-    skills = SkillLoader([agents, claude]).load()
+    skills = SkillsLoader([agents, claude]).load()
 
     assert {s.name for s in skills} == {"apple", "grape"}
 
@@ -94,7 +94,7 @@ def test_result_order_is_stable_and_sorted_by_name(root):
     for name in ["pear", "apple", "grape"]:
         write_skill(root, name, skill_md(name, f"{name} skill."))
 
-    names = [s.name for s in SkillLoader([root]).load()]
+    names = [s.name for s in SkillsLoader([root]).load()]
 
     assert names == ["apple", "grape", "pear"]
 
@@ -109,7 +109,7 @@ def test_first_root_wins_when_a_skill_name_appears_twice(tmp_path):
     write_skill(agents, "apple", skill_md("apple", "From agents."))
     write_skill(claude, "apple", skill_md("apple", "From claude."))
 
-    skills = SkillLoader([agents, claude]).load()
+    skills = SkillsLoader([agents, claude]).load()
 
     assert len(skills) == 1
     assert skills[0].description == "From agents."
@@ -123,7 +123,7 @@ def test_first_root_wins_when_a_skill_name_appears_twice(tmp_path):
 def test_skill_records_the_path_of_its_skill_file(root):
     skill_file = write_skill(root, "apple", skill_md("apple", "Deploys apple."))
 
-    skill = SkillLoader([root]).load()[0]
+    skill = SkillsLoader([root]).load()[0]
 
     assert skill.path == skill_file
 
@@ -133,7 +133,7 @@ def test_name_comes_from_the_folder_name(root):
     # identity, because later stages invoke skills by folder name.
     write_skill(root, "apple", skill_md("something-else", "Deploys apple."))
 
-    assert SkillLoader([root]).load()[0].name == "apple"
+    assert SkillsLoader([root]).load()[0].name == "apple"
 
 
 # --- Step 6: YAML that is more than "key: value" -----------------------------
@@ -145,7 +145,7 @@ def test_description_may_contain_a_colon(root):
         root, "apple", '---\ndescription: "Deploys: apple, then grape."\n---\nbody\n'
     )
 
-    assert SkillLoader([root]).load()[0].description == "Deploys: apple, then grape."
+    assert SkillsLoader([root]).load()[0].description == "Deploys: apple, then grape."
 
 
 def test_description_may_be_a_folded_multiline_block(root):
@@ -154,14 +154,14 @@ def test_description_may_be_a_folded_multiline_block(root):
     )
     write_skill(root, "apple", content)
 
-    assert SkillLoader([root]).load()[0].description == "Deploys the apple service."
+    assert SkillsLoader([root]).load()[0].description == "Deploys the apple service."
 
 
 def test_dashes_inside_the_body_do_not_end_the_frontmatter_early(root):
     body = "First part.\n\n---\n\nSecond part with description: not metadata."
     write_skill(root, "apple", skill_md("apple", "Real description.", body))
 
-    assert SkillLoader([root]).load()[0].description == "Real description."
+    assert SkillsLoader([root]).load()[0].description == "Real description."
 
 
 # --- Step 7: broken skills are skipped, never fatal --------------------------
@@ -172,14 +172,14 @@ def test_folder_without_a_skill_file_is_skipped(root):
     (root / "empty-folder").mkdir(parents=True)
     write_skill(root, "apple", skill_md("apple", "Deploys apple."))
 
-    assert [s.name for s in SkillLoader([root]).load()] == ["apple"]
+    assert [s.name for s in SkillsLoader([root]).load()] == ["apple"]
 
 
 def test_plain_file_in_the_root_is_ignored(root):
     root.mkdir()
     (root / "notes.txt").write_text("not a skill")
 
-    assert SkillLoader([root]).load() == []
+    assert SkillsLoader([root]).load() == []
 
 
 @pytest.mark.parametrize(
@@ -197,14 +197,14 @@ def test_invalid_skill_file_is_skipped(root, content):
     write_skill(root, "bad", content)
     write_skill(root, "apple", skill_md("apple", "Deploys apple."))
 
-    assert [s.name for s in SkillLoader([root]).load()] == ["apple"]
+    assert [s.name for s in SkillsLoader([root]).load()] == ["apple"]
 
 
 def test_skipped_skill_is_reported_on_stderr(root, capsys):
     # Not stdout: stdout must hold only the final answer for the tester.
     write_skill(root, "bad", "no frontmatter\n")
 
-    SkillLoader([root]).load()
+    SkillsLoader([root]).load()
 
     captured = capsys.readouterr()
     assert captured.out == ""
@@ -240,7 +240,7 @@ def test_render_with_no_skills_is_empty():
 def test_render_does_not_include_the_body(root):
     write_skill(root, "apple", skill_md("apple", "Deploys apple.", "SECRET BODY TEXT"))
 
-    text = render_skills(SkillLoader([root]).load())
+    text = render_skills(SkillsLoader([root]).load())
 
     assert "SECRET BODY TEXT" not in text
 
@@ -249,6 +249,6 @@ def test_render_keeps_a_multiline_description_on_one_line(root):
     content = "---\nname: apple\ndescription: |\n  Line one.\n  Line two.\n---\nbody\n"
     write_skill(root, "apple", content)
 
-    text = render_skills(SkillLoader([root]).load())
+    text = render_skills(SkillsLoader([root]).load())
 
     assert "- apple: Line one. Line two." in text

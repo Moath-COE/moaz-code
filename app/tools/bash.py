@@ -4,6 +4,8 @@ from .base import Tool
 
 
 class BashTool(Tool):
+    """A tool that executes bash commands and returns the structured output."""
+
     def __init__(self, timeout: float = 30, max_output_chars: int = 10000):
         super().__init__(
             name="Bash",
