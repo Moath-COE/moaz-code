@@ -12,36 +12,29 @@ class Gate:
 
     def parse_user_prompt(self, user_prompt: str) -> str:
         """
-        Parse the user prompt and return a structured representation.
-        For now, we just return the prompt as is.
+        Replace a leading /skill with that skill’s body, or return the prompt unchanged.
         """
-        if not user_prompt:
-            return ""
+        words = user_prompt.lstrip().split()
+        if not words:
+            return user_prompt
 
-        skill_name = self._detect_skill_command(user_prompt.lstrip().split(" ")[0])
+        skill = self._detect_skill_command(words[0])
 
-        if not skill_name:
+        if not skill:
             return user_prompt  # Not a command, return unchanged
 
-        skill = self.skills.get(skill_name)
-        if skill is None:
-            return user_prompt  # Unknown skill, return unchanged
-
-        logger.info("Detected skill command: %s", skill_name)
+        logger.info("Detected skill command: %s", skill.name)
 
         return load_skill_body(skill)
 
-    def _detect_skill_command(self, first_word: str) -> str | None:
+    def _detect_skill_command(self, first_word: str) -> Skill | None:
         """
         Detect if the prompt starts with a skill command (e.g., "/skill_name").
-        If so, return the skill name; otherwise, return None.
+        If so, return the skill; otherwise, return None.
         """
         if not first_word.startswith("/"):
-            return None  # Split and ignore the leading empty part
-
-        skill_name = first_word.split("/")[1]  # Remove the leading "/"
-
-        if skill_name and skill_name in self.skills:
-            return skill_name
-        else:
             return None
+
+        skill_name = first_word[1:]  # Remove the leading "/"
+
+        return self.skills.get(skill_name)  # Return the skill if it exists, else None

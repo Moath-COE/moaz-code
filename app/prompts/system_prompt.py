@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 BASE_PROMPT = """
-You are a helpful assistant agent. Help the user in their tasks and by planning and guiding
+You are a helpful coding assistant agent. The user is building very basic python programs and you should help them with that. Use your tools whenever required.
 """
 
 

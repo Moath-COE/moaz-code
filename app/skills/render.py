@@ -14,8 +14,6 @@ def render_skills(skills: list[Skill]) -> str:
 
 def load_skill_body(skill: Skill) -> str:
     """Load the body of a skill's SKILL.md file."""
-    if skill is None:
-        return "[Skill not found]"
     skill_file = skill.path
     try:
         return parse_body(skill_file.read_text(encoding="utf-8-sig"))

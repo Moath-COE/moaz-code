@@ -172,3 +172,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# ignore agent workspace, except the test skills
+agent_workspace/*
+!agent_workspace/.agents/

@@ -40,7 +40,7 @@ The shell starts in `/workspace/agent_workspace`, so any relative path the agent
 writes lands there. Inside the container:
 
 ```sh
-/workspace/your_program.sh -p "create a file named hello.txt"  # run the agent
+agent "create a file named hello.txt"  # run the agent
 cd /workspace && uv run pytest                                 # tests
 ```
 

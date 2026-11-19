@@ -50,14 +50,13 @@ def main():
     agent = Agent(
         client=client,
         registry=tool_registry,
-        model="anthropic/claude-haiku-4.5",
-        # model="nvidia/nemotron-3.5-super-vl:free",
+        # model="anthropic/claude-haiku-4.5",
+        model="nvidia/nemotron-3.5-super-vl:free",
         system_prompt=SYSTEM_PROMPT,
     )
 
-    user_prompt = gate.parse_user_prompt(args.p)
-
     try:
+        user_prompt = gate.parse_user_prompt(args.p)
         answer = agent.run(user_prompt)
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
