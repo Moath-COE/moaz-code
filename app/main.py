@@ -50,8 +50,8 @@ def main():
     agent = Agent(
         client=client,
         registry=tool_registry,
-        # model="anthropic/claude-haiku-4.5",
-        model="nvidia/nemotron-3.5-super-vl:free",
+        model="anthropic/claude-haiku-4.5",
+        # model="nvidia/nemotron-3.5-super-vl:free",
         system_prompt=SYSTEM_PROMPT,
     )
 
