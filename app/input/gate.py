@@ -1,6 +1,7 @@
 import logging
 
 from app.skills import SkillRegistry
+from app.skills.arguments import substitute_arguments
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +17,8 @@ class Gate:
         """
         Replace a leading /skill with that skill’s body, or return the prompt unchanged.
         """
-        words = user_prompt.lstrip().split()
-        if not words:
-            return user_prompt
-
-        name = self._parse_command_name(words[0])
+        command, _, arguments = user_prompt.lstrip().partition(" ")
+        name = self._parse_command_name(command)
         body = self.registry.get_body(name) if name else None
 
         if body is None:
@@ -28,7 +26,7 @@ class Gate:
 
         logger.info("Detected skill command: %s", name)
 
-        return body
+        return substitute_arguments(body, arguments)
 
     def _parse_command_name(self, first_word: str) -> str | None:
         """Return the name in a leading "/name", or None if it isn't a command."""

@@ -2,11 +2,14 @@
 
 API these tests pin down:
 
-    Gate(registry)  # needs only registry.get_body(name) -> str | None.parse_user_prompt(prompt: str) -> str
+    Gate(registry).parse_user_prompt(prompt: str) -> str
+
+The registry only needs get_body(name) -> str | None (see FakeRegistry below).
 
 Rules:
     - "/<name>" (optionally followed by words) where <name> is a known skill
-      -> the skill's body, and nothing else.
+      -> the skill's body with $ARGUMENTS / $N filled from the words after
+         the name, and nothing else.
     - anything else -> the prompt, unchanged.
 
 Work through the steps in order. Uncomment ONE step, watch it fail, then make
@@ -120,3 +123,43 @@ def test_body_keeps_its_inner_blank_line():
     gate = gate_with_skills({"apple": body})
 
     assert gate.parse_user_prompt("/apple") == body
+
+
+# --- arguments: what comes after the name fills the placeholders -----------
+
+
+def test_arguments_placeholder_gets_everything_after_the_name():
+    gate = gate_with_skills({"apple": "$ARGUMENTS"})
+
+    assert gate.parse_user_prompt("/apple 4127") == "4127"
+
+
+def test_positional_placeholders_get_single_words_in_the_order_the_body_asks():
+    gate = gate_with_skills({"grape": "$1 $0"})
+
+    assert gate.parse_user_prompt("/grape mango pear") == "pear mango"
+
+
+def test_skill_invoked_without_arguments_gets_empty_strings():
+    gate = gate_with_skills({"apple": "[$ARGUMENTS][$0]"})
+
+    assert gate.parse_user_prompt("/apple") == "[][]"
+
+
+def test_arguments_placeholder_keeps_the_original_spacing():
+    # $ARGUMENTS is "everything after the name", not the words re-joined.
+    gate = gate_with_skills({"apple": "$ARGUMENTS|$0|$1"})
+
+    assert gate.parse_user_prompt("/apple a   b") == "a   b|a|b"
+
+
+def test_leading_space_before_the_command_does_not_leak_into_arguments():
+    gate = gate_with_skills({"apple": "[$ARGUMENTS]"})
+
+    assert gate.parse_user_prompt("   /apple x") == "[x]"
+
+
+def test_arguments_are_not_applied_to_an_unknown_skill():
+    gate = gate_with_skills({"apple": "$ARGUMENTS"})
+
+    assert gate.parse_user_prompt("/banana 4127") == "/banana 4127"
