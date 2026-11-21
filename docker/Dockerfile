@@ -18,8 +18,8 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     UV_LINK_MODE=copy \
     PYTHONDONTWRITEBYTECODE=1
 
-RUN printf '#!/bin/sh\nexec /workspace/your_program.sh -p "$@"\n' > /usr/local/bin/agent \
-    && chmod +x /usr/local/bin/agent
+RUN printf '#!/bin/sh\nexec /workspace/your_program.sh -p "$@"\n' > /usr/local/bin/mcode \
+    && chmod +x /usr/local/bin/mcode
 
 USER dev
 WORKDIR /workspace
