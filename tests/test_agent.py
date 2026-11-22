@@ -30,7 +30,7 @@ def test_returns_content_when_model_answers_without_tool_calls(registry):
     client = FakeClient([make_response(content="the answer")])
     agent = make_agent(client, registry)
 
-    result = agent.run("what is 2+2?")
+    result = agent.run(["what is 2+2?"])
 
     assert result == "the answer"
     assert len(client.calls) == 1
@@ -56,7 +56,7 @@ def test_tool_result_is_sent_back_to_the_model(registry):
     )
     agent = make_agent(client, registry)
 
-    result = agent.run("call the tool")
+    result = agent.run(["call the tool"])
 
     assert result == "final answer"
     assert len(client.calls) == 2
@@ -80,7 +80,7 @@ def test_unknown_tool_error_is_sent_back_and_loop_continues(registry):
     )
     agent = make_agent(client, registry)
 
-    agent.run("call the unknown tool")
+    agent.run(["call the unknown tool"])
 
     tool_messages = [
         m
@@ -109,7 +109,7 @@ def test_malformed_json_arguments_are_reported_to_the_model(registry):
     )
     agent = make_agent(client, registry)
 
-    agent.run("call the tool with malformed JSON")
+    agent.run(["call the tool with malformed JSON"])
 
     tool_messages = [
         m
@@ -145,7 +145,7 @@ def test_multiple_tool_calls_in_one_reply_are_all_executed_in_order(registry):
     )
     agent = make_agent(client, registry)
 
-    result = agent.run("call both tools")
+    result = agent.run(["call both tools"])
 
     assert result == "final answer"
     assert len(client.calls) == 2
@@ -168,7 +168,7 @@ def test_no_choices_raises_runtime_error(registry):
     agent = make_agent(client, registry)
 
     with pytest.raises(RuntimeError, match="no choices in response"):
-        agent.run("trigger no choices")
+        agent.run(["trigger no choices"])
 
 
 def test_max_iterations_limit(registry):
@@ -189,7 +189,7 @@ def test_max_iterations_limit(registry):
     agent = make_agent(client, registry, max_iterations=3)
 
     with pytest.raises(RuntimeError, match="max iterations reached"):
-        agent.run("call the tool repeatedly")
+        agent.run(["call the tool repeatedly"])
 
     assert len(client.calls) == 3  # Should only call the client max_iterations times
 
@@ -201,7 +201,7 @@ def test_system_prompt_is_the_first_message(registry):
     client = FakeClient([make_response(content="apple")])
     agent = make_agent(client, registry, system_prompt="You have skills.")
 
-    agent.run("which skill?")
+    agent.run(["which skill?"])
 
     assert client.calls[0]["messages"][:2] == [
         {"role": "system", "content": "You have skills."},
@@ -209,11 +209,27 @@ def test_system_prompt_is_the_first_message(registry):
     ]
 
 
+# --- several user messages (stacked skills) ----------
+
+
+def test_each_user_message_is_sent_in_order_as_its_own_message(registry):
+    client = FakeClient([make_response(content="done")])
+    agent = make_agent(client, registry, system_prompt="You have skills.")
+
+    agent.run(["first body", "second body"])
+
+    assert client.calls[0]["messages"][:3] == [
+        {"role": "system", "content": "You have skills."},
+        {"role": "user", "content": "first body"},
+        {"role": "user", "content": "second body"},
+    ]
+
+
 def test_no_system_message_when_there_is_no_system_prompt(registry):
     client = FakeClient([make_response(content="hi")])
     agent = make_agent(client, registry)
 
-    agent.run("hello")
+    agent.run(["hello"])
 
     assert client.calls[0]["messages"][0]["role"] == "user"
 
@@ -223,6 +239,6 @@ def test_empty_system_prompt_adds_no_system_message(registry):
     client = FakeClient([make_response(content="hi")])
     agent = make_agent(client, registry, system_prompt="")
 
-    agent.run("hello")
+    agent.run(["hello"])
 
     assert client.calls[0]["messages"][0]["role"] == "user"

@@ -56,8 +56,8 @@ def main():
     )
 
     try:
-        user_prompt = gate.parse_user_prompt(args.p)
-        answer = agent.run(user_prompt)
+        user_messages = gate.parse_user_prompt(args.p)
+        answer = agent.run(user_messages)
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

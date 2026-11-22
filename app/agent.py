@@ -30,8 +30,9 @@ class Agent:
         )
         self.max_iterations = max_iterations
 
-    def run(self, user_prompt: str) -> str:
-        self.messages.append({"role": "user", "content": user_prompt})
+    def run(self, user_messages: list[str]) -> str:
+        for prompt in user_messages:
+            self.messages.append({"role": "user", "content": prompt})
 
         while True:
             for i in range(self.max_iterations):

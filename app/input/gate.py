@@ -1,9 +1,13 @@
 import logging
+import re
 
 from app.skills import SkillRegistry
 from app.skills.arguments import substitute_arguments
 
 logger = logging.getLogger(__name__)
+
+# optional leading whitespace, "/", the name, any whitespace, then everything else
+_COMMAND = re.compile(r"\s*/(\S+)\s*(.*)", re.DOTALL)
 
 
 class Gate:
@@ -13,24 +17,32 @@ class Gate:
     def __init__(self, registry: SkillRegistry):
         self.registry = registry
 
-    def parse_user_prompt(self, user_prompt: str) -> str:
+    def parse_user_prompt(self, user_prompt: str) -> list[str]:
         """
         Replace a leading /skill with that skill’s body, or return the prompt unchanged.
         """
-        command, _, arguments = user_prompt.lstrip().partition(" ")
-        name = self._parse_command_name(command)
-        body = self.registry.get_body(name) if name else None
+        command_bodies, command_arguments = self._detect_skill_commands(user_prompt)
+        if not command_bodies:
+            return [user_prompt]  # Not a command or unknown skill, return unchanged
 
-        if body is None:
-            return user_prompt  # Not a command or unknown skill, return unchanged
+        # If we have commands, we substitute their arguments and return the expanded bodies. Each command gets the same remaining text.
+        result = []
+        for cmd_body in command_bodies:
+            result.append(substitute_arguments(cmd_body, command_arguments))
 
-        logger.info("Detected skill command: %s", name)
+        return result
 
-        return substitute_arguments(body, arguments)
+    def _detect_skill_commands(self, user_prompt: str) -> tuple[list[str], str]:
+        """Return the detected skill commands in the prompt, or None if there are none."""
+        bodies = []
+        arguments = user_prompt
+        while match := _COMMAND.match(arguments):
+            name, after = match.groups()
+            body = self.registry.get_body(name)
+            if body is None:  # unknown skill: expansion stops here
+                break
+            bodies.append(body)
+            logger.info("Detected skill command: %s", name)
+            arguments = after
 
-    def _parse_command_name(self, first_word: str) -> str | None:
-        """Return the name in a leading "/name", or None if it isn't a command."""
-        if not first_word.startswith("/"):
-            return None
-
-        return first_word[1:]  # Remove the leading "/"
+        return bodies, arguments
