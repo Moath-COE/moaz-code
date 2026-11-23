@@ -32,7 +32,9 @@ class Agent:
 
     def run(self, user_messages: list[str]) -> str:
         for prompt in user_messages:
-            self.messages.append({"role": "user", "content": prompt})
+            message = {"role": "user", "content": prompt}
+            self.messages.append(message)
+            logger.info("user message added: %s", _preview(prompt))
 
         while True:
             for i in range(self.max_iterations):

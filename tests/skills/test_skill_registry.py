@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from app.skills import Skill, SkillRegistry, SkillsLoader
+from tests.instructions import HEADER_BODY_SEPARATOR, expected_instructions
 
 
 def make_skill(name: str, description: str = "Does things.") -> Skill:
@@ -125,7 +126,7 @@ def test__get_instructions_ends_with_the_body_after_a_blank_line(tmp_path):
 
     text = registry._get_instructions("apple")
 
-    assert text.endswith("relative to that folder.\n\nRun `scripts/checksum.sh`.")
+    assert text == expected_instructions(tmp_path, "Run `scripts/checksum.sh`.")
 
 
 # --- Phase 5: a relative root gives a relative folder (the real scenario) ----
@@ -151,11 +152,8 @@ def test__get_instructions_returns_the_skill_body_without_frontmatter(tmp_path):
     registry = SkillRegistry(SkillsLoader([tmp_path]).load())
 
     # The full text pins both halves: our header, then the body with no frontmatter.
-    assert registry._get_instructions("apple") == (
-        f"Skill: apple (located at {tmp_path / 'apple'})\n"
-        "Paths in the instructions below are relative to that folder.\n"
-        "\n"
-        "Say blueberry."
+    assert registry._get_instructions("apple") == expected_instructions(
+        tmp_path, "Say blueberry."
     )
 
 
@@ -200,7 +198,9 @@ def test_expand_without_placeholders_equals__get_instructions(tmp_path):
 def test_expand_fills_the_arguments_placeholder(tmp_path):
     registry = registry_with(tmp_path, "Checksum of $ARGUMENTS")
 
-    assert registry.expand("apple", "data.txt").endswith("\n\nChecksum of data.txt")
+    assert registry.expand("apple", "data.txt").endswith(
+        HEADER_BODY_SEPARATOR + "Checksum of data.txt"
+    )
 
 
 def test_expand_keeps_the_original_spacing_in_arguments(tmp_path):
@@ -215,7 +215,9 @@ def test_expand_keeps_the_original_spacing_in_arguments(tmp_path):
 def test_expand_fills_positional_placeholders_in_the_order_the_body_asks(tmp_path):
     registry = registry_with(tmp_path, "$1 $0")
 
-    assert registry.expand("apple", "mango pear").endswith("\n\npear mango")
+    assert registry.expand("apple", "mango pear").endswith(
+        HEADER_BODY_SEPARATOR + "pear mango"
+    )
 
 
 # --- Phase 10: no arguments -> placeholders become empty ---------------------

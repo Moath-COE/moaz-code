@@ -23,6 +23,11 @@ import pytest
 from app.input.gate import Gate
 from app.skills import SkillRegistry, SkillsLoader
 from app.skills.arguments import substitute_arguments
+from tests.instructions import (
+    HEADER_BODY_SEPARATOR,
+    expected_header,
+    expected_instructions,
+)
 
 
 class FakeRegistry:
@@ -263,12 +268,7 @@ def real_gate(tmp_path, body: str) -> Gate:
 def test_invoked_skill_message_names_the_skill_folder_and_keeps_the_body(tmp_path):
     gate = real_gate(tmp_path, "Run `scripts/checksum.sh`.")
 
-    expected = (
-        f"Skill: apple (located at {tmp_path / 'apple'})\n"
-        "Paths in the instructions below are relative to that folder.\n"
-        "\n"
-        "Run `scripts/checksum.sh`."
-    )
+    expected = expected_instructions(tmp_path, "Run `scripts/checksum.sh`.")
 
     assert gate.parse_user_prompt("/apple") == [expected]
 
@@ -278,5 +278,5 @@ def test_arguments_are_filled_into_the_body_and_the_header_is_kept(tmp_path):
 
     [message] = gate.parse_user_prompt("/apple data.txt")
 
-    assert message.startswith(f"Skill: apple (located at {tmp_path / 'apple'})\n")
-    assert message.endswith("\n\nChecksum of data.txt")
+    assert message.startswith(expected_header(tmp_path))
+    assert message.endswith(HEADER_BODY_SEPARATOR + "Checksum of data.txt")

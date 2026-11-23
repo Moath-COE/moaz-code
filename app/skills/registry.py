@@ -36,4 +36,4 @@ class SkillRegistry:
         if skill is None:
             return None
         body = load_skill_body(skill)
-        return f"Skill: {skill.name} (located at {skill.directory})\nPaths in the instructions below are relative to that folder.\n\n{body}"
+        return f"Skill: {skill.name} (located at {skill.directory})\nPaths in the instructions below are relative to that folder.\n\nSkill instructions:\n{body}"
