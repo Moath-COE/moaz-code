@@ -23,6 +23,8 @@ services:
       # Persistent virtualenv, separate from the host's .venv.
       - venv:/opt/venv
     env_file: ../.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # Tools that normally write next to the code must not, as it's read-only.
       UV_FROZEN: "1"

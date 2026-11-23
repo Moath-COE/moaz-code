@@ -16,7 +16,7 @@ class Agent:
         client,
         registry,
         model: str,
-        max_iterations: int = 10,
+        max_iterations: int = 30,
         system_prompt: str | None = None,
     ):
         self.client = client
