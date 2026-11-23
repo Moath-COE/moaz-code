@@ -11,6 +11,7 @@ from app.skills import SkillRegistry, SkillsLoader
 from app.tools.bash import BashTool
 from app.tools.read import ReadTool
 from app.tools.registry import ToolRegistry
+from app.tools.skill import SkillTool
 from app.tools.write import WriteTool
 from app.utils.build_client import build_client
 
@@ -40,18 +41,20 @@ def main():
     read_tool = ReadTool()
     write_tool = WriteTool()
     bash_tool = BashTool()
+    skill_tool = SkillTool(skills_registry)
 
     tool_registry.register(read_tool)
     tool_registry.register(write_tool)
     tool_registry.register(bash_tool)
+    tool_registry.register(skill_tool)
 
     gate = Gate(skills_registry)
 
     agent = Agent(
         client=client,
         registry=tool_registry,
-        # model="anthropic/claude-haiku-4.5",
-        model="nvidia/nemotron-3.5-super-vl:free",
+        model="anthropic/claude-haiku-4.5",
+        # model="nvidia/nemotron-3.5-super-vl:free",
         system_prompt=SYSTEM_PROMPT,
     )
 

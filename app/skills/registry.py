@@ -12,6 +12,11 @@ class SkillRegistry:
     def __contains__(self, name: str) -> bool:
         return name in self._skills
 
+    @property
+    def names(self) -> list[str]:
+        """Names of all discovered skills, sorted."""
+        return sorted(self._skills)
+
     def render(self) -> str:
         """Build the system-prompt text that advertises skills (level 1 only)."""
         if not self._skills:
@@ -21,7 +26,11 @@ class SkillRegistry:
             f"- {skill.name}: {skill.description}"
             for _, skill in sorted(self._skills.items())
         ]
-        return "You have access to the following skills:\n\n" + "\n".join(lines)
+        return (
+            "You have access to the following skills:\n\n"
+            + "\n".join(lines)
+            + "\n\nIf a skill matches the user's request, call the Skill tool with its name and follow the instructions it returns."
+        )
 
     def expand(self, name: str, arguments: str = "") -> str:
         """Return the skill's instructions with arguments substituted"""

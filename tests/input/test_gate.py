@@ -2,7 +2,7 @@
 
 API these tests pin down:
 
-    Gate(registry).parse_user_prompt(prompt: str) -> list[str]
+    Gate(skills_registry).parse_user_prompt(prompt: str) -> list[str]
 
 The registry only needs get_instructions(name) -> str | None (see FakeRegistry below).
 

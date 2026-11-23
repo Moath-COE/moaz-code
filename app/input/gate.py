@@ -8,10 +8,10 @@ logger = logging.getLogger(__name__)
 
 class Gate:
     """Turns a raw user prompt into what the model sees. Parsing only: it asks
-    the registry for skill instructions and never touches the filesystem itself."""
+    the skills registry for skill instructions and never touches the filesystem itself."""
 
-    def __init__(self, registry: SkillRegistry):
-        self.registry = registry
+    def __init__(self, skills_registry: SkillRegistry):
+        self.skills_registry = skills_registry
 
     def parse_user_prompt(self, user_prompt: str) -> list[str]:
         """
@@ -20,7 +20,7 @@ class Gate:
         names, rest = [], user_prompt
 
         while command := parse_command(rest):
-            if command.name not in self.registry:
+            if command.name not in self.skills_registry:
                 break
             logger.info("Detected skill command: %s", command.name)
             names.append(command.name)
@@ -28,4 +28,4 @@ class Gate:
 
         if not names:
             return [user_prompt]
-        return [self.registry.expand(name, rest) for name in names]
+        return [self.skills_registry.expand(name, rest) for name in names]

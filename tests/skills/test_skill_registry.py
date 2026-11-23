@@ -35,14 +35,16 @@ def test_render_matches_the_required_format():
         "You have access to the following skills:\n"
         "\n"
         "- apple: Deploys the apple service to production.\n"
-        "- grape: Runs the grape test suite and reports failures."
+        "- grape: Runs the grape test suite and reports failures.\n"
+        "\n"
+        "If a skill matches the user's request, call the Skill tool with its name and follow the instructions it returns."
     )
 
 
 def test_render_lists_skills_sorted_by_name():
     registry = SkillRegistry([make_skill("grape"), make_skill("apple")])
 
-    lines = registry.render().splitlines()[2:]
+    lines = [line for line in registry.render().splitlines() if line.startswith("- ")]
 
     assert [line.split(":")[0] for line in lines] == ["- apple", "- grape"]
 
@@ -265,6 +267,19 @@ def test_contains_is_true_for_a_known_name():
 
 def test_contains_is_false_for_an_unknown_name():
     assert "banana" not in SkillRegistry([make_skill("apple")])
+
+
+# --- names: what the model may ask for ---------------------------------------
+
+
+def test_names_are_sorted():
+    registry = SkillRegistry([make_skill("grape"), make_skill("apple")])
+
+    assert registry.names == ["apple", "grape"]
+
+
+def test_names_of_an_empty_registry_is_empty():
+    assert SkillRegistry([]).names == []
 
 
 # --- expand: unknown name is an error, not None ------------------------------
