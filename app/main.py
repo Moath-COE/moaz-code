@@ -28,6 +28,13 @@ def main():
 
     client = build_client()
 
+    SKILL_ROOTS = [Path(".agents/skills"), Path(".claude/skills")]
+
+    skills = SkillsLoader(SKILL_ROOTS).load()
+    skills_registry = SkillRegistry(skills)
+
+    SYSTEM_PROMPT = build_system_prompt(skills_registry.render())
+
     tool_registry = ToolRegistry()
 
     read_tool = ReadTool()
@@ -37,13 +44,6 @@ def main():
     tool_registry.register(read_tool)
     tool_registry.register(write_tool)
     tool_registry.register(bash_tool)
-
-    SKILL_ROOTS = [Path(".agents/skills"), Path(".claude/skills")]
-
-    skills = SkillsLoader(SKILL_ROOTS).load()
-    skills_registry = SkillRegistry(skills)
-
-    SYSTEM_PROMPT = build_system_prompt(skills_registry.render())
 
     gate = Gate(skills_registry)
 

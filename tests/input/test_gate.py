@@ -22,16 +22,20 @@ import pytest
 
 from app.input.gate import Gate
 from app.skills import SkillRegistry, SkillsLoader
+from app.skills.arguments import substitute_arguments
 
 
 class FakeRegistry:
-    """Stands in for SkillRegistry: bodies come from a dict, no files involved."""
-
     def __init__(self, bodies: dict[str, str]):
         self.bodies = bodies
 
-    def get_instructions(self, name: str) -> str | None:
-        return self.bodies.get(name)
+    def __contains__(self, name: str) -> bool:
+        return name in self.bodies
+
+    def expand(self, name: str, rest: str = "") -> str:
+        return substitute_arguments(
+            self.bodies[name], rest
+        )  # KeyError if unknown, like the real one
 
 
 def gate_with_skills(bodies: dict[str, str]) -> Gate:
