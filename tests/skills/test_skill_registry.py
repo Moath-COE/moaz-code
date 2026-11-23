@@ -32,31 +32,6 @@ def test_get_returns_none_for_an_unknown_name():
     assert SkillRegistry([make_skill("apple")]).get("banana") is None
 
 
-# --- get_body ----------------------------------------------------------------
-
-
-def test_get_body_returns_the_skill_body_without_frontmatter(tmp_path):
-    skill_dir = tmp_path / "apple"
-    skill_dir.mkdir()
-    (skill_dir / "SKILL.md").write_text(
-        "---\ndescription: Deploys apple.\n---\n\nSay blueberry.\n", encoding="utf-8"
-    )
-    registry = SkillRegistry(SkillsLoader([tmp_path]).load())
-
-    assert registry.get_body("apple") == "Say blueberry."
-
-
-def test_get_body_of_an_unknown_name_is_none():
-    assert SkillRegistry([make_skill("apple")]).get_body("banana") is None
-
-
-def test_get_body_of_an_unreadable_skill_raises_runtime_error():
-    registry = SkillRegistry([make_skill("apple")])  # file does not exist
-
-    with pytest.raises(RuntimeError, match="apple"):
-        registry.get_body("apple")
-
-
 # --- render (exact text, the tester depends on it) ---------------------------
 
 
@@ -113,3 +88,92 @@ def test_render_keeps_a_multiline_description_on_one_line(tmp_path):
     text = SkillRegistry(SkillsLoader([tmp_path]).load()).render()
 
     assert "- apple: Line one. Line two." in text
+
+
+# --- get_instructions: header + body (disclosure level 3 support) -------------
+#
+# API: SkillRegistry.get_instructions(name) -> str | None
+#
+# What the model sees when a skill is invoked: a header naming the skill's
+# folder (so relative paths like `scripts/x.sh` can be resolved), then the body.
+# Exact format, from the stage:
+#
+#   Skill: apple (located at .claude/skills/apple)
+#   Paths in the instructions below are relative to that folder.
+#   <blank line>
+#   <body>
+#
+# Work through the phases in order. Uncomment ONE, watch it fail, make it pass.
+
+
+def write_skill_file(root: Path, name: str, body: str) -> None:
+    skill_dir = root / name
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        f"---\ndescription: Does things.\n---\n\n{body}\n", encoding="utf-8"
+    )
+
+
+# --- Phase 3: the header names the skill's folder ----------------------------
+
+
+def test_get_instructions_starts_with_the_skill_folder_header(tmp_path):
+    write_skill_file(tmp_path, "apple", "Run `scripts/checksum.sh`.")
+    registry = SkillRegistry(SkillsLoader([tmp_path]).load())
+
+    first_two_lines = registry.get_instructions("apple").splitlines()[:2]
+
+    assert first_two_lines == [
+        f"Skill: apple (located at {tmp_path / 'apple'})",
+        "Paths in the instructions below are relative to that folder.",
+    ]
+
+
+# --- Phase 4: the body follows the header, untouched -------------------------
+
+
+def test_get_instructions_ends_with_the_body_after_a_blank_line(tmp_path):
+    write_skill_file(tmp_path, "apple", "Run `scripts/checksum.sh`.")
+    registry = SkillRegistry(SkillsLoader([tmp_path]).load())
+
+    text = registry.get_instructions("apple")
+
+    assert text.endswith("relative to that folder.\n\nRun `scripts/checksum.sh`.")
+
+
+# --- Phase 5: a relative root gives a relative folder (the real scenario) ----
+
+
+def test_header_uses_the_path_as_discovered_not_an_absolute_one(tmp_path, monkeypatch):
+    # The tester expects `.claude/skills/apple`, relative to the project root.
+    monkeypatch.chdir(tmp_path)
+    write_skill_file(Path(".claude/skills"), "apple", "body")
+    registry = SkillRegistry(SkillsLoader([Path(".claude/skills")]).load())
+
+    header = registry.get_instructions("apple").splitlines()[0]
+
+    assert header == "Skill: apple (located at .claude/skills/apple)"
+
+
+def test_get_instructions_returns_the_skill_body_without_frontmatter(tmp_path):
+    skill_dir = tmp_path / "apple"
+    skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text(
+        "---\ndescription: Deploys apple.\n---\n\nSay blueberry.\n", encoding="utf-8"
+    )
+    registry = SkillRegistry(SkillsLoader([tmp_path]).load())
+
+    # The full text pins both halves: our header, then the body with no frontmatter.
+    assert registry.get_instructions("apple") == (
+        f"Skill: apple (located at {tmp_path / 'apple'})\n"
+        "Paths in the instructions below are relative to that folder.\n"
+        "\n"
+        "Say blueberry."
+    )
+
+
+def test_get_instructions_of_an_unreadable_skill_raises_runtime_error():
+    registry = SkillRegistry([make_skill("apple")])  # file does not exist
+
+    with pytest.raises(RuntimeError, match="apple"):
+        registry.get_instructions("apple")

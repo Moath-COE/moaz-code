@@ -12,7 +12,7 @@ _COMMAND = re.compile(r"\s*/(\S+)\s*(.*)", re.DOTALL)
 
 class Gate:
     """Turns a raw user prompt into what the model sees. Parsing only: it asks
-    the registry for skill bodies and never touches the filesystem itself."""
+    the registry for skill instructions and never touches the filesystem itself."""
 
     def __init__(self, registry: SkillRegistry):
         self.registry = registry
@@ -21,28 +21,30 @@ class Gate:
         """
         Replace a leading /skill with that skill’s body, or return the prompt unchanged.
         """
-        command_bodies, command_arguments = self._detect_skill_commands(user_prompt)
-        if not command_bodies:
+        command_instructions, command_arguments = self._detect_skill_commands(
+            user_prompt
+        )
+        if not command_instructions:
             return [user_prompt]  # Not a command or unknown skill, return unchanged
 
-        # If we have commands, we substitute their arguments and return the expanded bodies. Each command gets the same remaining text.
+        # If we have commands, we substitute their arguments and return the expanded instructions. Each command gets the same remaining text.
         result = []
-        for cmd_body in command_bodies:
-            result.append(substitute_arguments(cmd_body, command_arguments))
+        for cmd_instruction in command_instructions:
+            result.append(substitute_arguments(cmd_instruction, command_arguments))
 
         return result
 
     def _detect_skill_commands(self, user_prompt: str) -> tuple[list[str], str]:
-        """Return the detected skill commands in the prompt, or None if there are none."""
-        bodies = []
+        """Return detected skill instructions and arguments, None if there are none."""
+        instructions = []
         arguments = user_prompt
         while match := _COMMAND.match(arguments):
             name, after = match.groups()
-            body = self.registry.get_body(name)
+            body = self.registry.get_instructions(name)
             if body is None:  # unknown skill: expansion stops here
                 break
-            bodies.append(body)
+            instructions.append(body)
             logger.info("Detected skill command: %s", name)
             arguments = after
 
-        return bodies, arguments
+        return instructions, arguments

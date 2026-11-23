@@ -4,7 +4,7 @@ API these tests pin down:
 
     Gate(registry).parse_user_prompt(prompt: str) -> list[str]
 
-The registry only needs get_body(name) -> str | None (see FakeRegistry below).
+The registry only needs get_instructions(name) -> str | None (see FakeRegistry below).
 
 Rules:
     - "/<name>" (optionally followed by words) where <name> is a known skill
@@ -21,6 +21,7 @@ it pass. Do not uncomment the next step until the current one is green.
 import pytest
 
 from app.input.gate import Gate
+from app.skills import SkillRegistry, SkillsLoader
 
 
 class FakeRegistry:
@@ -29,7 +30,7 @@ class FakeRegistry:
     def __init__(self, bodies: dict[str, str]):
         self.bodies = bodies
 
-    def get_body(self, name: str) -> str | None:
+    def get_instructions(self, name: str) -> str | None:
         return self.bodies.get(name)
 
 
@@ -238,3 +239,40 @@ def test_same_skill_named_twice_is_expanded_twice(stacked_gate):
         "blueberry-1",
         "blueberry-1",
     ]
+
+
+# --- the folder header (disclosure level 3) ---------------------------------
+#
+# These use the real SkillRegistry (files in tmp_path) instead of FakeRegistry:
+# the point is how Gate and the registry's header work TOGETHER.
+
+
+def real_gate(tmp_path, body: str) -> Gate:
+    skill_dir = tmp_path / "apple"
+    skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text(
+        f"---\ndescription: Does things.\n---\n\n{body}\n", encoding="utf-8"
+    )
+    return Gate(SkillRegistry(SkillsLoader([tmp_path]).load()))
+
+
+def test_invoked_skill_message_names_the_skill_folder_and_keeps_the_body(tmp_path):
+    gate = real_gate(tmp_path, "Run `scripts/checksum.sh`.")
+
+    expected = (
+        f"Skill: apple (located at {tmp_path / 'apple'})\n"
+        "Paths in the instructions below are relative to that folder.\n"
+        "\n"
+        "Run `scripts/checksum.sh`."
+    )
+
+    assert gate.parse_user_prompt("/apple") == [expected]
+
+
+def test_arguments_are_filled_into_the_body_and_the_header_is_kept(tmp_path):
+    gate = real_gate(tmp_path, "Checksum of $ARGUMENTS")
+
+    [message] = gate.parse_user_prompt("/apple data.txt")
+
+    assert message.startswith(f"Skill: apple (located at {tmp_path / 'apple'})\n")
+    assert message.endswith("\n\nChecksum of data.txt")

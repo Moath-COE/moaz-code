@@ -11,10 +11,13 @@ class SkillRegistry:
     def get(self, name: str) -> Skill | None:
         return self._skills.get(name)
 
-    def get_body(self, name: str) -> str | None:
-        """The skill's body (level 2), read on demand; None for an unknown name."""
+    def get_instructions(self, name: str) -> str | None:
+        """Header naming the skill's folder, then the body; None for an unknown name."""
         skill = self.get(name)
-        return None if skill is None else load_skill_body(skill)
+        if skill is None:
+            return None
+        body = load_skill_body(skill)
+        return f"Skill: {skill.name} (located at {skill.directory})\nPaths in the instructions below are relative to that folder.\n\n{body}"
 
     def render(self) -> str:
         """Build the system-prompt text that advertises skills (level 1 only)."""

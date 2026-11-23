@@ -7,3 +7,8 @@ class Skill:
     name: str
     description: str
     path: Path
+
+    @property
+    def directory(self) -> Path:
+        """Return the folder that holds SKILL.md."""
+        return self.path.parent
