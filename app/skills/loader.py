@@ -59,4 +59,5 @@ class SkillsLoader:
             name=skill_dir.name,
             description=" ".join(description.split()),
             path=skill_file,
+            fork=data.get("context") == "fork",
         )

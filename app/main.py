@@ -54,8 +54,8 @@ def main():
         client=client,
         registry=tool_registry,
         # model="anthropic/claude-haiku-4.5",
-        # model="nvidia/nemotron-3.5-super-vl:free",
-        model="qwen/qwen3-vl-8b",
+        model="nvidia/nemotron-3.5-super-vl:free",
+        # model="qwen/qwen3-vl-8b",
         system_prompt=SYSTEM_PROMPT,
     )
 

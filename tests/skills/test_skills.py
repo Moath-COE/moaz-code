@@ -25,8 +25,10 @@ def write_skill(root: Path, folder: str, content: str) -> Path:
     return skill_file
 
 
-def skill_md(name: str, description: str, body: str = "Do the thing.") -> str:
-    return f"---\nname: {name}\ndescription: {description}\n---\n\n{body}\n"
+def skill_md(
+    name: str, description: str, body: str = "Do the thing.", extra: str = ""
+) -> str:
+    return f"---\nname: {name}\ndescription: {description}\n{extra}---\n\n{body}\n"
 
 
 @pytest.fixture
@@ -208,3 +210,34 @@ def test_skipped_skill_is_reported_on_stderr(root, capsys):
     captured = capsys.readouterr()
     assert captured.out == ""
     assert "bad" in captured.err
+
+
+# --- context: fork -----------------------------------------------------------
+
+
+def test_skill_with_context_fork_is_marked_as_fork(root):
+    write_skill(
+        root, "apple", skill_md("apple", "Apple skill.", extra="context: fork\n")
+    )
+
+    skills = SkillsLoader([root]).load()
+
+    assert skills[0].fork is True
+
+
+def test_skill_without_context_is_not_a_fork(root):
+    write_skill(root, "apple", skill_md("apple", "Apple skill."))
+
+    skills = SkillsLoader([root]).load()
+
+    assert skills[0].fork is False
+
+
+def test_unknown_context_value_is_not_a_fork(root):
+    write_skill(
+        root, "apple", skill_md("apple", "Apple skill.", extra="context: banana\n")
+    )
+
+    skills = SkillsLoader([root]).load()
+
+    assert skills[0].fork is False

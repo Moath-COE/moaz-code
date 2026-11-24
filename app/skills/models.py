@@ -7,6 +7,7 @@ class Skill:
     name: str
     description: str
     path: Path
+    fork: bool = False
 
     @property
     def directory(self) -> Path:
