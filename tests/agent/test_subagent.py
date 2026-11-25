@@ -157,7 +157,7 @@ def test_child_tools_come_from_build_tools_with_a_deeper_spawner():
 
 def test_forked_skill_runs_in_its_own_conversation_end_to_end(tmp_path):
     from app.agent import Agent
-    from app.main import build_tool_registry
+    from app.main import build_spawner, build_tool_registry
     from app.skills import SkillRegistry, SkillsLoader
 
     skill_dir = tmp_path / "apple"
@@ -177,7 +177,7 @@ def test_forked_skill_runs_in_its_own_conversation_end_to_end(tmp_path):
             make_response(content="The on-call engineer is blueberry."),
         ]
     )
-    registry = build_tool_registry(client, "test-model", skills)
+    registry = build_tool_registry(build_spawner(client, "test-model", skills))
     agent = Agent(client=client, registry=registry, model="test-model")
     question = "Who is on the on-call rotation right now?"
 
@@ -198,7 +198,7 @@ def test_forked_skill_runs_in_its_own_conversation_end_to_end(tmp_path):
 def test_subagent_tools_cannot_start_another_subagent(tmp_path):
     # Default max_depth=1: the child's spawner cannot spawn, so a forked skill
     # loads inline there.
-    from app.main import build_tool_registry
+    from app.main import build_spawner, build_tool_registry
     from app.skills import SkillRegistry, SkillsLoader
 
     skill_dir = tmp_path / "apple"
@@ -217,7 +217,7 @@ def test_subagent_tools_cannot_start_another_subagent(tmp_path):
             make_response(content="blueberry"),
         ]
     )
-    registry = build_tool_registry(client, "test-model", skills)
+    registry = build_tool_registry(build_spawner(client, "test-model", skills))
 
     result = registry.execute("Skill", name="apple")  # what the main agent does
 
@@ -232,7 +232,7 @@ def test_subagent_tools_cannot_start_another_subagent(tmp_path):
 def test_deeper_max_depth_lets_a_subagent_start_a_grandchild(tmp_path):
     # The same nested script as above, with max_depth=2: the nested call now
     # starts a grandchild, which costs one more model call.
-    from app.main import build_tool_registry
+    from app.main import build_spawner, build_tool_registry
     from app.skills import SkillRegistry, SkillsLoader
 
     skill_dir = tmp_path / "apple"
@@ -252,7 +252,9 @@ def test_deeper_max_depth_lets_a_subagent_start_a_grandchild(tmp_path):
             make_response(content="blueberry"),  # child answers
         ]
     )
-    registry = build_tool_registry(client, "test-model", skills, max_depth=2)
+    registry = build_tool_registry(
+        build_spawner(client, "test-model", skills, max_depth=2)
+    )
 
     result = registry.execute("Skill", name="apple")
 
