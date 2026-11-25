@@ -289,3 +289,16 @@ def test_expand_raises_for_an_unknown_name():
     # make_skill's file does not exist: an unknown name must not read anything.
     with pytest.raises(ValueError, match="banana"):
         SkillRegistry([make_skill("apple")]).expand("banana", "x")
+
+
+# --- get: the Skill itself, so callers can read its settings (e.g. fork) -----
+
+
+def test_get_returns_the_skill_for_a_known_name():
+    skill = Skill("apple", "Does things.", Path("apple/SKILL.md"), fork=True)
+
+    assert SkillRegistry([skill]).get("apple") is skill
+
+
+def test_get_returns_none_for_an_unknown_name():
+    assert SkillRegistry([make_skill("apple")]).get("banana") is None

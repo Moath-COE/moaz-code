@@ -12,6 +12,10 @@ class SkillRegistry:
     def __contains__(self, name: str) -> bool:
         return name in self._skills
 
+    def get(self, name: str) -> Skill | None:
+        """The skill with this name, or None. Callers read its settings (e.g. fork)."""
+        return self._skills.get(name)
+
     @property
     def names(self) -> list[str]:
         """Names of all discovered skills, sorted."""
