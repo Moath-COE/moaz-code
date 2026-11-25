@@ -2,9 +2,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-BASE_PROMPT = """
-You are a helpful coding assistant agent. The user is building very basic python programs and you should help them with that. Use your tools whenever required.
-"""
+BASE_PROMPT = """"""
 
 
 def build_system_prompt(skills_prompt: str) -> str:
