@@ -9,7 +9,7 @@ API these tests pin down:
 
 import pytest
 
-from app.subagent import SubagentRunner, SubagentSpec
+from app.agent import SubagentRunner, SubagentSpec
 from app.tools.registry import ToolRegistry
 from tests.fakes import FakeClient, FakeTool, make_response, make_tool_call
 

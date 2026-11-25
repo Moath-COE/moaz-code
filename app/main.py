@@ -4,11 +4,10 @@ import os
 import sys
 from pathlib import Path
 
-from app.agent import Agent
+from app.agent import Agent, SubagentRunner
 from app.input.gate import Gate
 from app.prompts.system_prompt import build_system_prompt
 from app.skills import SkillRegistry, SkillsLoader
-from app.subagent import SubagentRunner
 from app.tools.bash import BashTool
 from app.tools.read import ReadTool
 from app.tools.registry import ToolRegistry

@@ -1,7 +1,7 @@
 import logging
 
+from app.agent import Spawner, SubagentSpec
 from app.skills.registry import SkillRegistry
-from app.subagent import Spawner, SubagentSpec
 
 from .base import Tool
 

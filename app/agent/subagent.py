@@ -8,8 +8,9 @@ it can be moved to a thread without changing what it does.
 from dataclasses import dataclass
 from typing import Protocol
 
-from app.agent import Agent
 from app.tools.registry import ToolRegistry
+
+from .loop import Agent
 
 
 @dataclass(frozen=True)
