@@ -4,7 +4,7 @@ from openai import OpenAI
 
 
 def build_client():
-    API_KEY = os.getenv("API_KEY")
+    API_KEY = os.getenv("API_KEY") or os.getenv("OPENROUTER_API_KEY")
     BASE_URL = os.getenv("BASE_URL", default="https://openrouter.ai/api/v1")
     if not API_KEY:
         raise RuntimeError("API_KEY is not set")
