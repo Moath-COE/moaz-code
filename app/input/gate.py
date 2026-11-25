@@ -16,11 +16,15 @@ class Gate:
     def parse_user_prompt(self, user_prompt: str) -> list[str]:
         """
         Replace a stacked skill calls with these skills' body, or return the prompt unchanged.
+
+        A forked skill ends the run like a non-skill token: it must run in a
+        subagent, so it stays as text for the model to reach via the Skill tool.
         """
         names, rest = [], user_prompt
 
         while command := parse_command(rest):
-            if command.name not in self.skills_registry:
+            skill = self.skills_registry.get(command.name)
+            if skill is None or skill.fork:
                 break
             logger.info("Detected skill command: %s", command.name)
             names.append(command.name)

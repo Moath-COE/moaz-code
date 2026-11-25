@@ -4,7 +4,7 @@ API these tests pin down:
 
     Gate(skills_registry).parse_user_prompt(prompt: str) -> list[str]
 
-The registry only needs get_instructions(name) -> str | None (see FakeRegistry below).
+The registry only needs `in`, get(name) and expand(name, rest) (see FakeRegistry below).
 
 Rules:
     - "/<name>" (optionally followed by words) where <name> is a known skill
@@ -18,10 +18,12 @@ Work through the steps in order. Uncomment ONE step, watch it fail, then make
 it pass. Do not uncomment the next step until the current one is green.
 """
 
+from pathlib import Path
+
 import pytest
 
 from app.input.gate import Gate
-from app.skills import SkillRegistry, SkillsLoader
+from app.skills import Skill, SkillRegistry, SkillsLoader
 from app.skills.arguments import substitute_arguments
 from tests.instructions import (
     HEADER_BODY_SEPARATOR,
@@ -31,11 +33,17 @@ from tests.instructions import (
 
 
 class FakeRegistry:
-    def __init__(self, bodies: dict[str, str]):
+    def __init__(self, bodies: dict[str, str], forked: frozenset[str] = frozenset()):
         self.bodies = bodies
+        self.forked = forked
 
     def __contains__(self, name: str) -> bool:
         return name in self.bodies
+
+    def get(self, name: str) -> Skill | None:
+        if name not in self.bodies:
+            return None
+        return Skill(name, "d", Path(f"{name}/SKILL.md"), fork=name in self.forked)
 
     def expand(self, name: str, rest: str = "") -> str:
         return substitute_arguments(
@@ -43,8 +51,10 @@ class FakeRegistry:
         )  # KeyError if unknown, like the real one
 
 
-def gate_with_skills(bodies: dict[str, str]) -> Gate:
-    return Gate(FakeRegistry(bodies))
+def gate_with_skills(
+    bodies: dict[str, str], forked: frozenset[str] = frozenset()
+) -> Gate:
+    return Gate(FakeRegistry(bodies, forked))
 
 
 @pytest.fixture
@@ -280,3 +290,33 @@ def test_arguments_are_filled_into_the_body_and_the_header_is_kept(tmp_path):
 
     assert message.startswith(expected_header(tmp_path))
     assert message.endswith(HEADER_BODY_SEPARATOR + "Checksum of data.txt")
+
+
+# --- a forked skill ends a stacking run --------------------------------------
+#
+# A `context: fork` skill must run in a subagent, never be expanded into the
+# main conversation. Gate treats it like a non-skill token: it ends the run and
+# stays as plain text, so the model reaches it through the Skill tool.
+
+
+@pytest.fixture
+def forking_gate() -> Gate:
+    return gate_with_skills(
+        {"apple": "blueberry-$ARGUMENTS", "fork": "SECRET"}, forked=frozenset({"fork"})
+    )
+
+
+def test_forked_skill_alone_leaves_the_prompt_unchanged(forking_gate):
+    assert forking_gate.parse_user_prompt("/fork 4127") == ["/fork 4127"]
+
+
+def test_forked_skill_after_a_normal_one_ends_the_run(forking_gate):
+    assert forking_gate.parse_user_prompt("/apple /fork 4127") == [
+        "blueberry-/fork 4127"
+    ]
+
+
+def test_forked_skill_body_is_never_expanded_by_the_gate(forking_gate):
+    result = forking_gate.parse_user_prompt("/apple /fork x")
+
+    assert not any("SECRET" in message for message in result)
