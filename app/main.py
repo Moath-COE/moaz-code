@@ -16,8 +16,8 @@ from app.tools.skill import SkillTool
 from app.tools.write import WriteTool
 from app.utils.build_client import build_client
 
-MODEL = "nvidia/nemotron-3.5-super-vl:free"
-# MODEL = "anthropic/claude-haiku-4.5"
+# MODEL = "nvidia/nemotron-3.5-super-vl:free"
+MODEL = "anthropic/claude-haiku-4.5"
 # MODEL = "qwen/qwen3-vl-8b"
 
 
