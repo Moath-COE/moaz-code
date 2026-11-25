@@ -40,4 +40,8 @@ The project is being built in OOP style under `app/`:
 - `app/tools/registry.py` defines `ToolRegistry`, which maps names to `Tool` instances. `.tools` returns the schemas to pass as `tools=`, and `.execute(name, **kwargs)` dispatches the call.
 - `app/tools/read.py` defines `ReadTool`, a concrete tool. Tools return error *strings* rather than raising, so the model sees the failure and can recover.
 
+- `app/agent.py` defines `Agent`, which is one conversation (`messages` lives on the instance) plus the loop. A new `Agent` is a new, empty conversation.
+- `app/subagent.py` defines `SubagentSpec` (frozen), the `Spawner` Protocol that tools depend on, and `SubagentRunner`, which builds a fresh `Agent` per spec and returns its answer or raises. A run is one blocking call with no shared state, so background execution can later wrap it in an executor.
+- `app/tools/skill.py`: a `context: fork` skill goes to the injected spawner, and the tool returns `Skill <name> ran in a separate context and returned: <answer>`. `app/main.py:build_tool_registry` gives the subagent a `SkillTool` without a spawner, so subagents never start subagents.
+
 To add a tool, subclass `Tool`, implement `run`, register it in the registry, and add tests under `tests/`.
