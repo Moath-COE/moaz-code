@@ -5,14 +5,11 @@ mutable state with its caller (a new Agent means a new message list), so later
 it can be moved to a thread without changing what it does.
 """
 
-import logging
 from dataclasses import dataclass
 from typing import Protocol
 
 from app.agent import Agent
 from app.tools.registry import ToolRegistry
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -50,14 +47,12 @@ class SubagentRunner:
         self.max_iterations = max_iterations
 
     def run(self, spec: SubagentSpec) -> str:
-        logger.info("subagent %s: starting", spec.label)
         agent = Agent(
             client=self.client,
             registry=self.registry,
             model=self.model,
             max_iterations=self.max_iterations,
             system_prompt=spec.system_prompt,
+            name=spec.label,
         )
-        answer = agent.run([spec.prompt])
-        logger.info("subagent %s: finished", spec.label)
-        return answer
+        return agent.run([spec.prompt])

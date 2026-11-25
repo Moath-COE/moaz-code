@@ -242,3 +242,21 @@ def test_empty_system_prompt_adds_no_system_message(registry):
     agent.run(["hello"])
 
     assert client.calls[0]["messages"][0]["role"] == "user"
+
+
+# --- name: which agent wrote a log line (main vs subagents) ----------
+
+
+def test_log_lines_carry_the_agent_name(registry, caplog):
+    client = FakeClient([make_response(content="hi")])
+    agent = make_agent(client, registry, name="skill:apple")
+
+    with caplog.at_level("INFO", logger="app.agent"):
+        agent.run(["hello"])
+
+    assert caplog.messages
+    assert all(m.startswith("[skill:apple] ") for m in caplog.messages)
+
+
+def test_default_agent_name_is_main(registry):
+    assert make_agent(FakeClient([]), registry).name == "main"

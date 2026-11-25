@@ -167,3 +167,13 @@ def test_subagent_tools_cannot_start_another_subagent(tmp_path):
     assert nested_result["role"] == "tool"
     assert nested_result["content"].endswith("Say blueberry.")
     assert result.endswith("returned: blueberry")
+
+
+def test_subagent_logs_under_its_label(caplog):
+    client = FakeClient([make_response(content="blueberry")])
+
+    with caplog.at_level("INFO", logger="app.agent"):
+        make_runner(client).run(SubagentSpec(prompt="go", label="skill:apple"))
+
+    assert caplog.messages
+    assert all(m.startswith("[skill:apple] ") for m in caplog.messages)
