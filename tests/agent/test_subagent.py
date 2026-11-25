@@ -3,20 +3,28 @@
 API these tests pin down:
 
     SubagentSpec(prompt: str, label: str, system_prompt: str | None = None)
-    SubagentRunner(client, model, registry, max_iterations=30)
-    .run(spec) -> str      the subagent's final answer; raises on failure
+    SubagentRunner(client, model, build_tools, max_iterations=30,
+                   max_depth=1, depth=0)
+    .can_spawn -> bool     depth < max_depth
+    .run(spec) -> str      the subagent's final answer; raises on failure,
+                           SpawnNotAllowed when can_spawn is False
+
+build_tools(spawner) -> ToolRegistry gives the child its tools. The spawner it
+receives is a runner one level deeper, so the depth rule lives in one place.
 """
 
 import pytest
 
-from app.agent import SubagentRunner, SubagentSpec
+from app.agent import SpawnNotAllowed, SubagentRunner, SubagentSpec
 from app.tools.registry import ToolRegistry
 from tests.fakes import FakeClient, FakeTool, make_response, make_tool_call
 
 
 def make_runner(client: FakeClient, registry: ToolRegistry | None = None, **kw):
+    """A runner whose children all get `registry` (empty by default)."""
+    tools = registry or ToolRegistry()
     return SubagentRunner(
-        client=client, model="test-model", registry=registry or ToolRegistry(), **kw
+        client=client, model="test-model", build_tools=lambda spawner: tools, **kw
     )
 
 
@@ -90,6 +98,57 @@ def test_failure_is_raised_not_turned_into_text():
         make_runner(client, max_iterations=1).run(SubagentSpec(prompt="go", label="x"))
 
 
+# --- depth: may this runner start a subagent? --------------------------------
+
+
+@pytest.mark.parametrize(
+    ("depth", "max_depth", "expected"),
+    [(0, 1, True), (1, 1, False), (1, 2, True), (2, 2, False)],
+)
+def test_can_spawn_while_depth_is_below_max_depth(depth, max_depth, expected):
+    runner = make_runner(FakeClient([]), depth=depth, max_depth=max_depth)
+
+    assert runner.can_spawn is expected
+
+
+def test_default_runner_can_spawn_one_level():
+    runner = make_runner(FakeClient([]))
+
+    assert runner.can_spawn is True
+
+
+def test_run_raises_spawn_not_allowed_at_the_depth_limit():
+    client = FakeClient([make_response(content="never")])
+    runner = make_runner(client, depth=1, max_depth=1)
+
+    with pytest.raises(SpawnNotAllowed):
+        runner.run(SubagentSpec(prompt="go", label="x"))
+
+    assert client.calls == []  # refused before any model call
+
+
+def test_child_tools_come_from_build_tools_with_a_deeper_spawner():
+    tools = ToolRegistry()
+    tools.register(FakeTool(name="Fake"))
+    spawners = []
+
+    def build_tools(spawner):
+        spawners.append(spawner)
+        return tools
+
+    client = FakeClient([make_response(content="done")])
+    runner = SubagentRunner(
+        client=client, model="test-model", build_tools=build_tools, max_depth=3
+    )
+
+    runner.run(SubagentSpec(prompt="go", label="x"))
+
+    [child_spawner] = spawners
+    assert child_spawner.depth == 1
+    assert child_spawner.max_depth == 3
+    assert client.calls[0]["tools"] == tools.tools
+
+
 # --- end to end: main agent -> Skill tool -> subagent -> main agent ----------
 #
 # Uses the real wiring from main.py and one FakeClient shared by both agents,
@@ -137,7 +196,8 @@ def test_forked_skill_runs_in_its_own_conversation_end_to_end(tmp_path):
 
 
 def test_subagent_tools_cannot_start_another_subagent(tmp_path):
-    # The child's Skill tool has no spawner: a forked skill loads inline there.
+    # Default max_depth=1: the child's spawner cannot spawn, so a forked skill
+    # loads inline there.
     from app.main import build_tool_registry
     from app.skills import SkillRegistry, SkillsLoader
 
@@ -166,6 +226,45 @@ def test_subagent_tools_cannot_start_another_subagent(tmp_path):
     nested_result = client.calls[1]["messages"][-1]
     assert nested_result["role"] == "tool"
     assert nested_result["content"].endswith("Say blueberry.")
+    assert result.endswith("returned: blueberry")
+
+
+def test_deeper_max_depth_lets_a_subagent_start_a_grandchild(tmp_path):
+    # The same nested script as above, with max_depth=2: the nested call now
+    # starts a grandchild, which costs one more model call.
+    from app.main import build_tool_registry
+    from app.skills import SkillRegistry, SkillsLoader
+
+    skill_dir = tmp_path / "apple"
+    skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text(
+        "---\ndescription: d\ncontext: fork\n---\n\nSay blueberry.\n",
+        encoding="utf-8",
+    )
+    skills = SkillRegistry(SkillsLoader([tmp_path]).load())
+    client = FakeClient(
+        [
+            # child: calls the forked skill again
+            make_response(
+                tool_calls=[make_tool_call("c1", "Skill", {"name": "apple"})]
+            ),
+            make_response(content="blueberry"),  # grandchild answers
+            make_response(content="blueberry"),  # child answers
+        ]
+    )
+    registry = build_tool_registry(client, "test-model", skills, max_depth=2)
+
+    result = registry.execute("Skill", name="apple")
+
+    assert len(client.calls) == 3
+    grandchild_messages = client.calls[1]["messages"]
+    assert [m["role"] for m in grandchild_messages] == ["user"]
+    assert grandchild_messages[0]["content"].endswith("Say blueberry.")
+    assert client.calls[2]["messages"][-1] == {
+        "role": "tool",
+        "tool_call_id": "c1",
+        "content": "Skill apple ran in a separate context and returned: blueberry",
+    }
     assert result.endswith("returned: blueberry")
 
 

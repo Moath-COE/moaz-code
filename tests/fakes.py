@@ -79,12 +79,19 @@ class FakeTool(Tool):
 class FakeSpawner:
     """Stands in for SubagentRunner: records each spec and returns a canned answer.
 
-    Pass `error` to make every run raise it instead.
+    Pass `error` to make every run raise it instead, and `can_spawn=False` to
+    play a spawner that has reached its depth limit.
     """
 
-    def __init__(self, answer: str = "blueberry", error: Exception | None = None):
+    def __init__(
+        self,
+        answer: str = "blueberry",
+        error: Exception | None = None,
+        can_spawn: bool = True,
+    ):
         self.answer = answer
         self.error = error
+        self.can_spawn = can_spawn
         self.specs: list = []
 
     def run(self, spec) -> str:

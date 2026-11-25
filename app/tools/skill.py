@@ -13,10 +13,11 @@ class SkillTool(Tool):
 
     A skill with `context: fork` is handed to the spawner instead: it runs in a
     subagent with a conversation of its own, and only its answer comes back.
-    Without a spawner (inside a subagent), forked skills load inline.
+    When the spawner cannot spawn (its depth limit is reached), forked skills
+    load inline. The spawner owns that rule; this tool only asks.
     """
 
-    def __init__(self, skills_registry: SkillRegistry, spawner: Spawner | None = None):
+    def __init__(self, skills_registry: SkillRegistry, spawner: Spawner):
         super().__init__(
             name="Skill",
             description="Load a skill's instructions into the conversation",
@@ -44,14 +45,14 @@ class SkillTool(Tool):
         except RuntimeError as e:
             return f"Error executing skill {name}: {e}"
 
-        if skill.fork and self.spawner is not None:
-            return self._run_in_subagent(self.spawner, name, instructions)
+        if skill.fork and self.spawner.can_spawn:
+            return self._run_in_subagent(name, instructions)
         return instructions
 
-    def _run_in_subagent(self, spawner: Spawner, name: str, instructions: str) -> str:
+    def _run_in_subagent(self, name: str, instructions: str) -> str:
         spec = SubagentSpec(prompt=instructions, label=f"skill:{name}")
         try:
-            answer = spawner.run(spec)
+            answer = self.spawner.run(spec)
         except Exception as e:
             # Isolation boundary: a failing subagent must not crash the main
             # agent. Logged in full, and the model sees the failure as text.

@@ -2,7 +2,7 @@
 
 API these tests pin down:
 
-    SkillTool(registry: SkillRegistry, spawner: Spawner | None = None)
+    SkillTool(registry: SkillRegistry, spawner: Spawner)
     .name == "Skill"
     .schema()                  -> required ["name"], optional "args"
     .run(name, args="") -> str -> the expanded instructions, or an "Error..." string
@@ -33,7 +33,7 @@ def tool_with(tmp_path, **bodies: str) -> SkillTool:
     """A SkillTool over real skill files: one skill per keyword, name -> body."""
     for name, body in bodies.items():
         write_skill(tmp_path, name, body)
-    return SkillTool(SkillRegistry(SkillsLoader([tmp_path]).load()))
+    return SkillTool(SkillRegistry(SkillsLoader([tmp_path]).load()), FakeSpawner())
 
 
 # --- Phase 1: the schema is the contract with the model ----------------------
@@ -127,7 +127,7 @@ def test_unknown_skill_error_lists_the_available_names(tmp_path):
 
 
 def test_unknown_skill_error_says_so_when_there_are_no_skills():
-    result = SkillTool(SkillRegistry([])).run(name="apple")
+    result = SkillTool(SkillRegistry([]), FakeSpawner()).run(name="apple")
 
     assert "apple" in result
     assert "No skills are available" in result
@@ -141,7 +141,7 @@ def test_unknown_skill_error_does_not_leak_other_bodies(tmp_path):
 
 
 def test_skill_with_no_skills_at_all_returns_an_error_string():
-    tool = SkillTool(SkillRegistry([]))
+    tool = SkillTool(SkillRegistry([]), FakeSpawner())
 
     assert tool.run(name="apple").startswith("Error")
 
@@ -186,7 +186,7 @@ def test_registry_advertises_the_skill_schema(tool_registry):
 
 # --- Phase 6: a forked skill runs in a subagent ------------------------------
 #
-#   SkillTool(registry, spawner: Spawner | None = None)
+#   SkillTool(registry, spawner: Spawner)
 #
 # A skill with `context: fork` is not returned to the model. Its expanded
 # instructions go to the spawner, and only the subagent's answer comes back.
@@ -279,8 +279,12 @@ def test_any_subagent_exception_is_contained(tmp_path):
     assert tool.run(name="apple").startswith("Error")
 
 
-def test_forked_skill_without_a_spawner_loads_inline(tmp_path):
-    # Inside a subagent there is no spawner: subagents never start subagents.
-    tool = forked_tool(tmp_path, spawner=None)
+def test_forked_skill_loads_inline_when_the_spawner_cannot_spawn(tmp_path):
+    # At the depth limit (e.g. inside a subagent), a forked skill loads inline.
+    spawner = FakeSpawner(can_spawn=False)
+    tool = forked_tool(tmp_path, spawner)
 
-    assert tool.run(name="apple") == expected_instructions(tmp_path, "Say blueberry.")
+    result = tool.run(name="apple")
+
+    assert spawner.specs == []
+    assert result == expected_instructions(tmp_path, "Say blueberry.")

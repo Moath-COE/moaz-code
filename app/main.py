@@ -4,7 +4,7 @@ import os
 import sys
 from pathlib import Path
 
-from app.agent import Agent, SubagentRunner
+from app.agent import Agent, Spawner, SubagentRunner
 from app.input.gate import Gate
 from app.prompts.system_prompt import build_system_prompt
 from app.skills import SkillRegistry, SkillsLoader
@@ -21,31 +21,30 @@ MODEL = "nvidia/nemotron-3.5-super-vl:free"
 
 
 def build_tool_registry(
-    client, model: str, skills_registry: SkillRegistry
+    client, model: str, skills_registry: SkillRegistry, max_depth: int = 1
 ) -> ToolRegistry:
-    """The main agent's tools, plus the subagent runner that forked skills use.
+    """The main agent's tools. Every agent, main or sub, gets its tools from
+    build_tools: the only difference between them is the spawner they hold.
 
-    Built in two layers so there is no cycle: the subagent's tools first (its
-    Skill tool has no spawner, so subagents never start subagents), then the
-    runner over them, then the main tools whose Skill tool can fork.
+    The root runner sits at depth 0. SubagentRunner hands each child a runner
+    one level deeper, and decides whether that one may spawn again.
     """
-    read_tool, write_tool, bash_tool = ReadTool(), WriteTool(), BashTool()
 
-    subagent_registry = ToolRegistry()
-    for tool in (read_tool, write_tool, bash_tool, SkillTool(skills_registry)):
-        subagent_registry.register(tool)
+    def build_tools(spawner: Spawner) -> ToolRegistry:
+        registry = ToolRegistry()
+        for tool in (
+            ReadTool(),
+            WriteTool(),
+            BashTool(),
+            SkillTool(skills_registry, spawner),
+        ):
+            registry.register(tool)
+        return registry
 
-    runner = SubagentRunner(client=client, model=model, registry=subagent_registry)
-
-    main_registry = ToolRegistry()
-    for tool in (
-        read_tool,
-        write_tool,
-        bash_tool,
-        SkillTool(skills_registry, spawner=runner),
-    ):
-        main_registry.register(tool)
-    return main_registry
+    runner = SubagentRunner(
+        client=client, model=model, build_tools=build_tools, max_depth=max_depth
+    )
+    return build_tools(runner)
 
 
 def main():
