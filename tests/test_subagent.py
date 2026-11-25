@@ -88,3 +88,82 @@ def test_failure_is_raised_not_turned_into_text():
 
     with pytest.raises(RuntimeError, match="max iterations"):
         make_runner(client, max_iterations=1).run(SubagentSpec(prompt="go", label="x"))
+
+
+# --- end to end: main agent -> Skill tool -> subagent -> main agent ----------
+#
+# Uses the real wiring from main.py and one FakeClient shared by both agents,
+# scripted in call order: parent, child, parent.
+
+
+def test_forked_skill_runs_in_its_own_conversation_end_to_end(tmp_path):
+    from app.agent import Agent
+    from app.main import build_tool_registry
+    from app.skills import SkillRegistry, SkillsLoader
+
+    skill_dir = tmp_path / "apple"
+    skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text(
+        "---\ndescription: The on-call rotation.\ncontext: fork\n---\n\n"
+        "Respond with exactly one word: blueberry\n",
+        encoding="utf-8",
+    )
+    skills = SkillRegistry(SkillsLoader([tmp_path]).load())
+    client = FakeClient(
+        [
+            make_response(
+                tool_calls=[make_tool_call("c1", "Skill", {"name": "apple"})]
+            ),
+            make_response(content="blueberry"),  # the subagent
+            make_response(content="The on-call engineer is blueberry."),
+        ]
+    )
+    registry = build_tool_registry(client, "test-model", skills)
+    agent = Agent(client=client, registry=registry, model="test-model")
+    question = "Who is on the on-call rotation right now?"
+
+    answer = agent.run([question])
+
+    child_messages = client.calls[1]["messages"]
+    assert [m["role"] for m in child_messages] == ["user"]
+    assert "Respond with exactly one word: blueberry" in child_messages[0]["content"]
+    assert question not in child_messages[0]["content"]
+    assert {
+        "role": "tool",
+        "tool_call_id": "c1",
+        "content": "Skill apple ran in a separate context and returned: blueberry",
+    } in client.calls[2]["messages"]
+    assert "blueberry" in answer
+
+
+def test_subagent_tools_cannot_start_another_subagent(tmp_path):
+    # The child's Skill tool has no spawner: a forked skill loads inline there.
+    from app.main import build_tool_registry
+    from app.skills import SkillRegistry, SkillsLoader
+
+    skill_dir = tmp_path / "apple"
+    skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text(
+        "---\ndescription: d\ncontext: fork\n---\n\nSay blueberry.\n",
+        encoding="utf-8",
+    )
+    skills = SkillRegistry(SkillsLoader([tmp_path]).load())
+    client = FakeClient(
+        [
+            # inside the subagent, the model calls the same forked skill again
+            make_response(
+                tool_calls=[make_tool_call("c1", "Skill", {"name": "apple"})]
+            ),
+            make_response(content="blueberry"),
+        ]
+    )
+    registry = build_tool_registry(client, "test-model", skills)
+
+    result = registry.execute("Skill", name="apple")  # what the main agent does
+
+    # 2 calls: the nested call loaded the body inline instead of a third agent.
+    assert len(client.calls) == 2
+    nested_result = client.calls[1]["messages"][-1]
+    assert nested_result["role"] == "tool"
+    assert nested_result["content"].endswith("Say blueberry.")
+    assert result.endswith("returned: blueberry")
