@@ -39,7 +39,7 @@ A small agent written from scratch in object-oriented Python:
 | Path                    | Responsibility                                                  |
 | ----------------------- | --------------------------------------------------------------- |
 | `app/main.py`           | Composition root: builds the client, registry, skills and agent |
-| `app/agent/`            | The agent loop (`loop.py`) and subagents (`subagent.py`)        |
+| `app/agent/`            | The agent loop (`core.py`) and subagents (`subagent.py`)        |
 | `app/tools/base.py`     | `Tool` ABC: `name`, `description`, `properties`, `run()`        |
 | `app/tools/registry.py` | `ToolRegistry`: name → tool, schema list, dispatch              |
 | `app/skills/`           | Load, parse and render skills for the system prompt             |
@@ -56,7 +56,7 @@ You need [`uv`](https://docs.astral.sh/uv/) and Python ≥ 3.14.
 
 ```sh
 echo 'OPENROUTER_API_KEY=sk-or-...' > .env
-./your_program.sh -p "explain what app/agent/loop.py does"
+./your_program.sh -p "explain what app/agent/core.py does"
 ```
 
 Development:

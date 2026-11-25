@@ -10,7 +10,7 @@ from typing import Protocol
 
 from app.tools.registry import ToolRegistry
 
-from .loop import Agent
+from .core import Agent
 
 
 @dataclass(frozen=True)
