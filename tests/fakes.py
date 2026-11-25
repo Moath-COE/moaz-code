@@ -74,3 +74,21 @@ class FakeTool(Tool):
     def run(self, **kwargs) -> str:
         self.calls.append(kwargs)
         return self.output
+
+
+class FakeSpawner:
+    """Stands in for SubagentRunner: records each spec and returns a canned answer.
+
+    Pass `error` to make every run raise it instead.
+    """
+
+    def __init__(self, answer: str = "blueberry", error: Exception | None = None):
+        self.answer = answer
+        self.error = error
+        self.specs: list = []
+
+    def run(self, spec) -> str:
+        self.specs.append(spec)
+        if self.error is not None:
+            raise self.error
+        return self.answer

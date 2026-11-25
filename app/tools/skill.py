@@ -1,12 +1,22 @@
+import logging
+
 from app.skills.registry import SkillRegistry
+from app.subagent import Spawner, SubagentSpec
 
 from .base import Tool
 
+logger = logging.getLogger(__name__)
+
 
 class SkillTool(Tool):
-    """A tool that loads a skill's instructions into the conversation."""
+    """A tool that loads a skill's instructions into the conversation.
 
-    def __init__(self, skills_registry: SkillRegistry):
+    A skill with `context: fork` is handed to the spawner instead: it runs in a
+    subagent with a conversation of its own, and only its answer comes back.
+    Without a spawner (inside a subagent), forked skills load inline.
+    """
+
+    def __init__(self, skills_registry: SkillRegistry, spawner: Spawner | None = None):
         super().__init__(
             name="Skill",
             description="Load a skill's instructions into the conversation",
@@ -23,14 +33,31 @@ class SkillTool(Tool):
             required=["name"],
         )
         self.skills_registry = skills_registry
+        self.spawner = spawner
 
     def run(self, name: str, args: str = "") -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
-        if name not in self.skills_registry:
+        skill = self.skills_registry.get(name)
+        if skill is None:
             return self._unknown_skill_error(name)
         try:
-            return self.skills_registry.expand(name=name, arguments=args)
+            instructions = self.skills_registry.expand(name=name, arguments=args)
         except RuntimeError as e:
             return f"Error executing skill {name}: {e}"
+
+        if skill.fork and self.spawner is not None:
+            return self._run_in_subagent(self.spawner, name, instructions)
+        return instructions
+
+    def _run_in_subagent(self, spawner: Spawner, name: str, instructions: str) -> str:
+        spec = SubagentSpec(prompt=instructions, label=f"skill:{name}")
+        try:
+            answer = spawner.run(spec)
+        except Exception as e:
+            # Isolation boundary: a failing subagent must not crash the main
+            # agent. Logged in full, and the model sees the failure as text.
+            logger.exception("subagent for skill %s failed", name)
+            return f"Error: skill {name} failed in its subagent: {e}"
+        return f"Skill {name} ran in a separate context and returned: {answer}"
 
     def _unknown_skill_error(self, name: str) -> str:
         """Tell the model which names are valid so it can retry."""

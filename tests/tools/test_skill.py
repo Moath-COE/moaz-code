@@ -2,12 +2,13 @@
 
 API these tests pin down:
 
-    SkillTool(registry: SkillRegistry)
+    SkillTool(registry: SkillRegistry, spawner: Spawner | None = None)
     .name == "Skill"
     .schema()                  -> required ["name"], optional "args"
     .run(name, args="") -> str -> the expanded instructions, or an "Error..." string
 
-SkillTool only delegates to SkillRegistry.expand. It never reads files itself,
+SkillTool delegates to SkillRegistry.expand, and for a `context: fork` skill
+to the spawner (see Phase 6). It never reads files itself,
 and it never raises: the model must see the failure as text and recover.
 """
 
@@ -16,6 +17,7 @@ import pytest
 from app.skills import SkillRegistry, SkillsLoader
 from app.tools.registry import ToolRegistry
 from app.tools.skill import SkillTool
+from tests.fakes import FakeSpawner
 from tests.instructions import expected_instructions
 
 
@@ -180,3 +182,105 @@ def test_registry_executes_skill_with_name_and_args(tmp_path):
 
 def test_registry_advertises_the_skill_schema(tool_registry):
     assert [schema["function"]["name"] for schema in tool_registry.tools] == ["Skill"]
+
+
+# --- Phase 6: a forked skill runs in a subagent ------------------------------
+#
+#   SkillTool(registry, spawner: Spawner | None = None)
+#
+# A skill with `context: fork` is not returned to the model. Its expanded
+# instructions go to the spawner, and only the subagent's answer comes back.
+
+
+def write_forked_skill(root, name: str, body: str) -> None:
+    skill_dir = root / name
+    skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text(
+        f"---\ndescription: Does things.\ncontext: fork\n---\n\n{body}\n",
+        encoding="utf-8",
+    )
+
+
+def forked_tool(tmp_path, spawner, body: str = "Say blueberry.") -> SkillTool:
+    write_forked_skill(tmp_path, "apple", body)
+    write_skill(tmp_path, "grape", "Say raisin.")
+    return SkillTool(SkillRegistry(SkillsLoader([tmp_path]).load()), spawner=spawner)
+
+
+def test_forked_skill_sends_its_instructions_to_the_spawner(tmp_path):
+    spawner = FakeSpawner()
+    tool = forked_tool(tmp_path, spawner)
+
+    tool.run(name="apple")
+
+    assert [spec.prompt for spec in spawner.specs] == [
+        expected_instructions(tmp_path, "Say blueberry.")
+    ]
+
+
+def test_forked_skill_spec_is_labelled_and_has_no_system_prompt(tmp_path):
+    spawner = FakeSpawner()
+    tool = forked_tool(tmp_path, spawner)
+
+    tool.run(name="apple")
+
+    [spec] = spawner.specs
+    assert spec.label == "skill:apple"
+    assert spec.system_prompt is None
+
+
+def test_forked_skill_fills_arguments_before_spawning(tmp_path):
+    spawner = FakeSpawner()
+    tool = forked_tool(tmp_path, spawner, body="Checksum of $ARGUMENTS")
+
+    tool.run(name="apple", args="data.txt")
+
+    assert spawner.specs[0].prompt.endswith("Checksum of data.txt")
+
+
+def test_forked_skill_returns_the_subagent_answer_in_the_stage_framing(tmp_path):
+    tool = forked_tool(tmp_path, FakeSpawner(answer="blueberry"))
+
+    result = tool.run(name="apple")
+
+    assert result == "Skill apple ran in a separate context and returned: blueberry"
+
+
+def test_forked_skill_result_does_not_contain_the_body(tmp_path):
+    tool = forked_tool(tmp_path, FakeSpawner(answer="x"), body="SECRET BODY TEXT")
+
+    assert "SECRET BODY TEXT" not in tool.run(name="apple")
+
+
+def test_normal_skill_never_calls_the_spawner(tmp_path):
+    spawner = FakeSpawner()
+    tool = forked_tool(tmp_path, spawner)
+
+    result = tool.run(name="grape")
+
+    assert spawner.specs == []
+    assert result == expected_instructions(tmp_path, "Say raisin.", name="grape")
+
+
+def test_failing_subagent_returns_an_error_string_naming_the_skill(tmp_path):
+    tool = forked_tool(tmp_path, FakeSpawner(error=RuntimeError("max iterations")))
+
+    result = tool.run(name="apple")
+
+    assert result.startswith("Error")
+    assert "apple" in result
+    assert "max iterations" in result
+
+
+def test_any_subagent_exception_is_contained(tmp_path):
+    # e.g. an API error deep inside the subagent must not crash the main agent.
+    tool = forked_tool(tmp_path, FakeSpawner(error=ConnectionError("network down")))
+
+    assert tool.run(name="apple").startswith("Error")
+
+
+def test_forked_skill_without_a_spawner_loads_inline(tmp_path):
+    # Inside a subagent there is no spawner: subagents never start subagents.
+    tool = forked_tool(tmp_path, spawner=None)
+
+    assert tool.run(name="apple") == expected_instructions(tmp_path, "Say blueberry.")
